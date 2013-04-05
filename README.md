@@ -62,3 +62,27 @@ Explain the details of your CRL implementation (with protocol) in your report.
 
 You will be asked to do a demo to the TA to show that your system implements the required functionality and works as 
 specified. However, before the deadline, submit your project as follows.
+
+Deliverables
+------------
+
+All in tarball or zip archive:
+
+- The source code along with a Makefile/Ant script. 
+
+- Individual contributions of each member – write about who did what (function/feature implementation, integration, 
+design, evaluation etc) 
+
+- A README file explaining how to run the program, along with instructions for compiling and testing your 
+application. 
+
+- A PDF report for your application that includes protocol details and performance evaluation of SDFS. 
+
+Resources / Links
+-----------------
+
+1. OpenSSL: http://www.openssl.org/
+
+2. Secure programming with the OpenSSL API: http://www.ibm.com/developerworks/linux/library/l-openssl.html
+
+3. Java SE Security page: http://java.sun.com/javase/technologies/security/
