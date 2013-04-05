@@ -49,7 +49,7 @@ If the client is able to update because of a delegation, the owner does not chan
 4. **delegate/delegate*(<i>file UID, Client Cert C, time T</i>):**
 A delegation credential (e.g., signed token) is generated that allows an owner client to delegate rights
 (put, get or both) for a file to another client having certificate C for a time duration of T.
-If any confidential information needs to be exchanged between the clientsfor implementing delegation,
+If any confidential information needs to be exchanged between the clients for implementing delegation,
 you should use secure channels.
 The delegate call is used when the delegated rightsshould not be propagated further.
 The rights could be further delegated when the delegate* call is used.
