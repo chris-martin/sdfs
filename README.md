@@ -51,7 +51,7 @@ A delegation credential (e.g., signed token) is generated that allows an owner c
 (put, get or both) for a file to another client having certificate C for a time duration of T.
 If any confidential information needs to be exchanged between the clients for implementing delegation,
 you should use secure channels.
-The delegate call is used when the delegated rightsshould not be propagated further.
+The delegate call is used when the delegated rights should not be propagated further.
 The rights could be further delegated when the delegate* call is used.
 
 5. **end-session():** Terminates the current session.
