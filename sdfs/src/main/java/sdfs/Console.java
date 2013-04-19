@@ -12,7 +12,6 @@ import scala.tools.jline.console.ConsoleReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.List;
 
 public class Console {
@@ -55,13 +54,23 @@ public class Console {
                         if (!commandArgs.isEmpty()) {
                             String head = commandArgs.get(0);
                             List<String> tail = commandArgs.subList(1, commandArgs.size());
+
                             if (ImmutableList.of("help", "?").contains(head)) {
-                                CharStreams.copy(
-                                    new InputStreamReader(Resources.getResource(Console.class, "help.txt").openStream()),
-                                    System.out
+
+                                String help = CharStreams.toString(new InputStreamReader(
+                                    Resources.getResource("help.txt").openStream())
                                 );
+
+                                String ref = CharStreams.toString(new InputStreamReader(
+                                    Resources.getResource("reference.conf").openStream())
+                                ).replaceAll("(.+)\n", "    $1\n");
+
+                                System.out.println(help + "Config format:\n\n" + ref);
+
                             } else if (ImmutableList.of("quit", "q").contains(head)) {
+
                                 halt = true;
+
                             }
                         }
                     } catch (IOException e) {

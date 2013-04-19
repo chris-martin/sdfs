@@ -1,0 +1,6 @@
+
+Implemented commands:
+
+    help, ?       Print this message
+    quit, q       Halt and exit the SDFS console.
+
