@@ -22,7 +22,7 @@ generates certificates for clients and the server.
 All nodes trust the CA and have its public key.
 You can make use of a library such as **OpenSSL** (see resources section) to implement the CA.
 
-![Architecture diagram](arch.png)
+![Architecture diagram](assignment/arch.png)
 
 The SDFS client should implement the following calls:
 
