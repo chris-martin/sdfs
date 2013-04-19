@@ -3,36 +3,78 @@ package sdfs;
 import com.google.common.base.Joiner;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import scala.tools.jline.console.ConsoleReader;
 
 import java.io.File;
+import java.io.IOException;
 
 public class Console {
 
-    private final Config config;
+    Config config = ConfigFactory.empty();
 
-    public Console(Config config) {
-        this.config = config;
+    static class StartedState {
+        ConsoleReader console;
+        Thread shutdownHook;
     }
 
-    public void start() {
+    StartedState startedState;
+
+    void start() {
         System.out.println(config);
+
+        if (startedState == null) {
+            startedState = new StartedState();
+            try {
+                startedState.console = new ConsoleReader();
+            } catch (IOException e) {
+                startedState = null;
+                throw new RuntimeException(e);
+            }
+            startedState.shutdownHook = new Thread(new Runnable() {
+                public void run() {
+                    stop();
+                }
+            });
+            Runtime.getRuntime().addShutdownHook(startedState.shutdownHook);
+        }
+
+        try {
+            String a = startedState.console.readLine();
+            System.out.println(a);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    void stop() {
+        if (startedState != null) {
+            try {
+                startedState.console.getTerminal().restore();
+            } catch (Throwable ignored) {
+            }
+            Runtime.getRuntime().removeShutdownHook(startedState.shutdownHook);
+            startedState = null;
+        }
     }
 
     public static void main(String[] args) {
-        new Console(config(args)).start();
+        Console console = new Console();
+        console.config = config(args);
+        console.start();
     }
 
-    private static Config config(String[] args) {
+    static Config config(String[] args) {
         return argsConfig(args)
             .withFallback(fileConfig())
             .withFallback(ConfigFactory.load());
     }
 
-    private static Config argsConfig(String[] args) {
+    static Config argsConfig(String[] args) {
         return ConfigFactory.parseString(Joiner.on("\n").join(args));
     }
 
-    private static Config fileConfig() {
+    static Config fileConfig() {
         return ConfigFactory.parseFile(new File("sdfs.conf"));
     }
 
