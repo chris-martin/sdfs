@@ -1,11 +1,19 @@
 package sdfs;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.CharStreams;
+import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import scala.tools.jline.console.ConsoleReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.List;
 
 public class Console {
 
@@ -37,12 +45,31 @@ public class Console {
             Runtime.getRuntime().addShutdownHook(startedState.shutdownHook);
         }
 
-        try {
-            String a = startedState.console.readLine();
-            System.out.println(a);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        new Thread() {
+            public void run() {
+                boolean halt = false;
+                while (!halt) {
+                    try {
+                        String commandLine = startedState.console.readLine("sdfs> ");
+                        List<String> commandArgs = ImmutableList.copyOf(commandSplitter.split(commandLine));
+                        if (!commandArgs.isEmpty()) {
+                            String head = commandArgs.get(0);
+                            List<String> tail = commandArgs.subList(1, commandArgs.size());
+                            if (ImmutableList.of("help", "?").contains(head)) {
+                                CharStreams.copy(
+                                    new InputStreamReader(Resources.getResource(Console.class, "help.txt").openStream()),
+                                    System.out
+                                );
+                            } else if (ImmutableList.of("quit", "q").contains(head)) {
+                                halt = true;
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }.start();
 
     }
 
@@ -56,6 +83,8 @@ public class Console {
             startedState = null;
         }
     }
+
+    static final Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
 
     public static void main(String[] args) {
         Console console = new Console();
