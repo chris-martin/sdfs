@@ -71,7 +71,11 @@ public class Console {
     }
 
     static Config argsConfig(String[] args) {
-        return ConfigFactory.parseString(Joiner.on("\n").join(args));
+        Config config = ConfigFactory.empty();
+        for (String arg : args) {
+            config = config.withFallback(ConfigFactory.parseString(arg).atPath("sdfs"));
+        }
+        return config;
     }
 
     static Config fileConfig() {
