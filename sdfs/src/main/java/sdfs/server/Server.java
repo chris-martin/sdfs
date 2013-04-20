@@ -1,10 +1,10 @@
 package sdfs.server;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-
-import java.security.KeyStore;
+import sdfs.ssl.ProtectedKeyStore;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -14,41 +14,84 @@ import static com.google.common.base.Preconditions.checkState;
 public class Server {
 
     private final int port;
-    private final KeyStore keyStore;
+    private final ProtectedKeyStore keyStore;
 
-    private ServerBootstrap bootstrap;
+    private EventLoopGroup bossGroup;
+    private EventLoopGroup workerGroup;
+
+    private Thread shutdownHook;
+
+    private boolean started;
 
     /**
      * @param port port to bind to
      * @param keyStore key store with the server and CA certs.
      */
-    public Server(int port, KeyStore keyStore) {
+    public Server(int port, ProtectedKeyStore keyStore) {
         this.port = port;
         this.keyStore = keyStore;
     }
 
     /**
-     * Starts the server and blocks until {@link #stop()} is called.
+     * Starts the server in a new thread.
      */
-    public void start() throws InterruptedException {
-        checkState(bootstrap == null, "Server is already started.");
+    public synchronized void start() {
+        checkState(!started, "Server is already started.");
+        started = true;
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                startInCurrentThread();
+            }
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    void startInCurrentThread() {
+
+        bossGroup = new NioEventLoopGroup();
+        workerGroup = new NioEventLoopGroup();
+
+        shutdownHook = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                shutdownHook = null;
+                stop();
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
 
         try {
-            bootstrap = new ServerBootstrap()
-                    .group(new NioEventLoopGroup(), new NioEventLoopGroup())
+            ServerBootstrap bootstrap = new ServerBootstrap()
+                    .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerChannelInitializer(keyStore));
+                    .childHandler(new ServerInitializer(keyStore));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
+        } catch (InterruptedException ignored) {
         } finally {
             stop();
         }
     }
 
     /**
-     * Stops the servers.
+     * Stops the server.
      */
-    public void stop() {
-        bootstrap.shutdown();
+    public synchronized void stop() {
+        if (!started) return;
+        started = false;
+
+        if (shutdownHook != null) {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            shutdownHook = null;
+        }
+
+        bossGroup.shutdown();
+        workerGroup.shutdown();
+
+        bossGroup = null;
+        workerGroup = null;
     }
 }

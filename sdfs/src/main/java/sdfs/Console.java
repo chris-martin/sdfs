@@ -4,13 +4,21 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import scala.tools.jline.console.ConsoleReader;
+import sdfs.server.Server;
+import sdfs.ssl.ProtectedKeyStore;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.List;
 
 public class Console {
@@ -37,6 +45,7 @@ public class Console {
             }
             startedState.shutdownHook = new Thread(new Runnable() {
                 public void run() {
+                    startedState.shutdownHook = null;
                     stop();
                 }
             });
@@ -45,6 +54,8 @@ public class Console {
 
         new Thread() {
             public void run() {
+                Server server = null;
+
                 boolean halt = false;
                 while (!halt) {
                     try {
@@ -67,6 +78,53 @@ public class Console {
 
                                 halt = true;
 
+                            } else if (ImmutableList.of("server", "s").contains(head)) {
+
+                                if (tail.size() == 1 && tail.get(0).equals("stop")) {
+                                    if (server == null) {
+                                        System.out.println("Server not started.");
+                                    } else {
+                                        System.out.println("Stopping server...");
+                                        server.stop();
+                                        server = null;
+                                        System.out.println("Server stopped.");
+                                    }
+                                    continue;
+                                }
+
+                                if (server != null) {
+                                    System.out.println("Server already started.");
+                                    continue;
+                                }
+
+                                int port;
+                                try {
+                                    port = tail.size() < 1 ? 8883 : Integer.parseInt(tail.get(0));
+                                } catch (NumberFormatException e) {
+                                    System.out.println("Port must be an integer.");
+                                    continue;
+                                }
+
+                                System.out.println("Starting server on port " + port + "...");
+
+                                String certPath = config.getString("sdfs.cert-path");
+
+                                ProtectedKeyStore protectedKeyStore;
+                                // TODO real keystore
+                                try {
+                                    char[] password = "asdfgh".toCharArray();
+                                    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                                    try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "server-keystore")).openBufferedStream()) {
+                                        keyStore.load(keystoreIn, password);
+                                    }
+                                    protectedKeyStore = new ProtectedKeyStore(keyStore, password);
+                                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException e) {
+                                    throw new RuntimeException(e); // TODO decent error message
+                                }
+                                server = new Server(port, protectedKeyStore);
+                                server.start();
+
+                                System.out.println("Server started on port " + port + ".");
                             }
                         }
                     } catch (IOException e) {
@@ -84,7 +142,9 @@ public class Console {
                 startedState.console.getTerminal().restore();
             } catch (Throwable ignored) {
             }
-            Runtime.getRuntime().removeShutdownHook(startedState.shutdownHook);
+            if (startedState.shutdownHook != null) {
+                Runtime.getRuntime().removeShutdownHook(startedState.shutdownHook);
+            }
             startedState = null;
         }
     }
