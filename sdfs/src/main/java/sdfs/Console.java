@@ -1,9 +1,9 @@
 package sdfs;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -11,7 +11,6 @@ import scala.tools.jline.console.ConsoleReader;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 
 public class Console {
@@ -57,12 +56,9 @@ public class Console {
 
                             if (ImmutableList.of("help", "?").contains(head)) {
 
-                                String help = CharStreams.toString(new InputStreamReader(
-                                    Resources.getResource("help.txt").openStream())
-                                );
+                                String help = Resources.toString(Resources.getResource("help.txt"), Charsets.UTF_8);
 
-                                String ref = CharStreams.toString(new InputStreamReader(
-                                    Resources.getResource("reference.conf").openStream())
+                                String ref = Resources.toString(Resources.getResource("reference.conf"), Charsets.UTF_8
                                 ).replaceAll("(.+)\n", "    $1\n");
 
                                 System.out.println(help + "Config format:\n\n" + ref);
