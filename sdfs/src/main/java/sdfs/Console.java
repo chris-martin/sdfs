@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.ConnectException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -197,7 +198,13 @@ public class Console {
                         throw new RuntimeException(e); // TODO decent error message
                     }
                     client = new Client(host, port, protectedKeyStore);
-                    client.connect();
+                    try {
+                        client.connect();
+                    } catch (ConnectException e) {
+                        System.out.println(e.getMessage());
+                        client = null;
+                        return;
+                    }
 
                     System.out.println("Connected to " + host + ":" + port + ".");
                 }
