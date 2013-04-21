@@ -1,5 +1,0 @@
-./gen-keystore.sh "$1"
-./gen-csr.sh "$1"
-./gen-cert.sh "$1"
-./import-ca-cert.sh "$1"
-./import-cert.sh "$1"

@@ -18,9 +18,12 @@ import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
@@ -268,17 +271,36 @@ public class Console {
     }
 
     ProtectedKeyStore keyStore(String identity) {
+        if (true) {
+            CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
+            try {
+                File keystoreFile = new File(config.getString("sdfs.cert-path"), cn.name + ".jks");
+                char[] keystorePassword = "storepass".toCharArray(); // TODO
+                KeyStore keyStore = KeyStore.getInstance("JKS");
+                try (FileInputStream in = new FileInputStream(keystoreFile)) {
+                    keyStore.load(in, keystorePassword);
+                }
+                return new ProtectedKeyStore(keyStore, "keypass".toCharArray()); // TODO
+            } catch (Exception e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        }
+        // TODO
         try {
-            ProtectedKeyStore protectedKeyStore = ProtectedKeyStore.createEmpty();
+            ProtectedKeyStore protectedKeyStore;
+            try (FileInputStream in = new FileInputStream(config.getString("sdfs.prototype-keystore-path"))) {
+                protectedKeyStore = ProtectedKeyStore.createEmpty(in, "storepass".toCharArray()); // TODO
+            }
             CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
             CertCollection.Cert cert = certs.byCN.get(cn);
             if (cert == null) {
                 throw new RuntimeException("No such cert: " + cn);
             }
             X509Certificate x509 = cert.x509;
-            protectedKeyStore.keyStore.setCertificateEntry("sdfs-server", x509);
+            protectedKeyStore.keyStore.setCertificateEntry(identity, x509);
+            protectedKeyStore.keyStore.setKeyEntry(identity, cert.key.getEncoded(), new Certificate[]{x509});
             return protectedKeyStore;
-        } catch (KeyStoreException e) {
+        } catch (KeyStoreException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }

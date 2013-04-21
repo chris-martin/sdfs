@@ -1,0 +1,24 @@
+Generate CA key pair and store it in ca.jks:
+$ keytool -keystore ca.jks -storetype JKS -storepass storepass -genkeypair -alias ca -keyalg RSA -dname CN=ca -keypass keypass
+
+Export CA cert to ca.pem:
+$ keytool -keystore ca.jks -storetype JKS -storepass storepass -alias ca -exportcert -rfc > ca.pem
+
+Generate server key pair and store it in server.jks:
+$ keytool -keystore server.jks -storetype JKS -storepass storepass -genkeypair -alias server -keyalg RSA -dname CN=server -keypass keypass
+
+Generate a Certificate Signing Request (CSR) from 'server' and use it to issue a cert signed by 'ca':
+$ keytool -keystore server.jks -storetype JKS -storepass storepass -certreq -alias server -keypass keypass | keytool -keystore ca.jks -storetype JKS -storepass storepass -gencert -alias ca -keypass keypass -rfc > server.pem
+
+Import the CA cert into server.jks:
+$ keytool -keystore server.jks -storetype JKS -storepass storepass -importcert -alias ca -file ca.pem -noprompt
+
+Import the CSR reply (the cert for server's key pair) into server.jks
+$ keytool -keystore server.jks -storetype JKS -storepass storepass -importcert -alias server -keypass keypass -file server.pem
+
+Export server's cert and key pair in the PKCS#12 format:
+$ keytool -importkeystore -srckeystore server.jks -srcstoretype JKS -srcstorepass storepass -destkeystore server.p12 -deststoretype PKCS12 -deststorepass storepass -srcalias server -srckeypass keypass
+The dest key password can also be specified, but defaults to -srckeypass.
+
+Generate a new cert for 'client1' signed by 'ca':
+$ ./gen-cert.sh client1
