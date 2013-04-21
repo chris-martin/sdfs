@@ -1,7 +1,5 @@
 package sdfs.server;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.FluentIterable;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -10,12 +8,9 @@ import io.netty.channel.ChannelInboundByteHandlerAdapter;
 import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sdfs.CN;
 import sdfs.protocol.Protocol;
 
-import javax.naming.InvalidNameException;
-import javax.naming.ldap.LdapName;
-import javax.naming.ldap.Rdn;
-import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 
 public class ServerHandler extends ChannelInboundByteHandlerAdapter {
@@ -37,22 +32,10 @@ public class ServerHandler extends ChannelInboundByteHandlerAdapter {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 SSLSession session = sslHandler.engine().getSession();
-                String client = getPeerCn(session);
+                CN client = CN.fromLdapPrincipal(session.getPeerPrincipal());
                 log.info("Client `{}' connected.", client);
             }
         });
-    }
-
-    private String getPeerCn(SSLSession session) throws InvalidNameException, SSLPeerUnverifiedException {
-        return FluentIterable
-                .from(new LdapName(session.getPeerPrincipal().getName()).getRdns())
-                .firstMatch(new Predicate<Rdn>() {
-                    @Override
-                    public boolean apply(Rdn input) {
-                        return input.getType().equalsIgnoreCase("CN");
-                    }
-                })
-                .get().getValue().toString();
     }
 
     @Override
