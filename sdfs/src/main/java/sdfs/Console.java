@@ -171,7 +171,7 @@ public class Console {
                                 } else {
                                     System.out.println("Disconnecting...");
                                     client.disconnect();
-                                    server = null;
+                                    client = null;
                                     System.out.println("Disconnected.");
                                 }
                             }
