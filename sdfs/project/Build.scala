@@ -31,13 +31,13 @@ object Build extends sbt.Build {
         "-target", "1.7"
       ),
       libraryDependencies ++= Seq(
-        "com.google.guava" % "guava" % "14.0-rc3",
+        "com.google.guava" % "guava" % "14.0.1",
         "net.sourceforge.argparse4j" % "argparse4j" % "0.3.2",
         "org.scala-lang" % "jline" % "2.10.0" exclude("org.fusesource.jansi", "jansi"),
-        "org.apache.commons" % "commons-math3" % "3.1.1",
         "com.google.code.findbugs" % "jsr305" % "2.0.1",
         "ch.qos.logback" % "logback-classic" % "1.0.9",
-        "com.typesafe" % "config" % "1.0.0"
+        "com.typesafe" % "config" % "1.0.0",
+        "io.netty" % "netty-all" % "4.0.0.CR1"
       ),
       libraryDependencies ++= Seq(
         "junit" % "junit" % "4.11",
