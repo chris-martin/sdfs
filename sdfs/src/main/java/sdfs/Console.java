@@ -52,17 +52,20 @@ public class Console {
         boolean halt = false;
         while (!halt) {
 
+            String line;
             try {
-                String line = console.readLine("sdfs> ");
-                List<String> args = ImmutableList.copyOf(commandSplitter.split(line));
-                if (!args.isEmpty()) {
-                    ExecutionResult result = execute(args);
-                    if (result.halt) {
-                        halt = true;
-                    }
-                }
+                line = console.readLine("sdfs> ");
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                halt = true;
+                continue;
+            }
+
+            List<String> args = ImmutableList.copyOf(commandSplitter.split(line));
+            if (!args.isEmpty()) {
+                ExecutionResult result = execute(args);
+                if (result.halt) {
+                    halt = true;
+                }
             }
         }
     }
@@ -160,9 +163,18 @@ public class Console {
                 }
             }
 
-        } else if (ImmutableList.of("connect", "c").contains(head)) {
+        } else if (ImmutableList.of("client", "c").contains(head)) {
 
-            if (client != null) {
+            if (tail.size() == 1 && tail.get(0).equals("stop")) {
+                if (client == null) {
+                    System.out.println("Client not started.");
+                } else {
+                    System.out.println("Stopping client...");
+                    client.disconnect();
+                    client = null;
+                    System.out.println("Client stopped.");
+                }
+            } else if (client != null) {
                 System.out.println("Already connected.");
             } else {
 
@@ -192,16 +204,6 @@ public class Console {
                     System.out.println("Connected to " + host + ":" + port + ".");
                 }
             }
-        } else if ("disconnect".equals(head)) {
-            if (client == null) {
-                System.out.println("Not connected.");
-            } else {
-                System.out.println("Disconnecting...");
-                client.disconnect();
-                server = null;
-                System.out.println("Disconnected.");
-            }
-
         }
 
         return ExecutionResult.ok();
