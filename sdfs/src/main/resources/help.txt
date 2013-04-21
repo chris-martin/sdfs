@@ -7,4 +7,3 @@ Commands:
     server, s           Starts the SDFS server.
     server stop         Halts the SDFS server.
     set <key> <value>   Assigns the config property sdfs.<key> = <value>
-

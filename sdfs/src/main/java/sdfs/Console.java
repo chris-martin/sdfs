@@ -77,6 +77,48 @@ public class Console {
         }
     }
 
+    String status() {
+        StringBuilder status = new StringBuilder();
+        if (server != null) {
+            status.append(server.toString()).append("\n");
+        }
+        if (client != null) {
+            status.append(client.toString()).append("\n");
+        }
+        return status.toString();
+    }
+
+    String help() {
+        StringBuilder help = new StringBuilder();
+
+        try {
+
+            help.append(
+                CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("help.txt").openStream())
+                )
+            ).append("\n");
+
+        } catch (IOException e) {
+            help.append(e.getMessage()).append("\n");
+        }
+
+        help.append("Config:\n\n").append(
+            (
+                "sdfs " + config.getValue("sdfs").render(
+                    ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                ) + "\n"
+            ).replaceAll("(.+)\n", "    $1\n")
+        );
+
+        String status = status();
+        if (!status.isEmpty()) {
+            help.append("\nStatus:\n\n").append(status.replaceAll("(.+)\n", "    $1\n"));
+        }
+
+        return help.toString();
+    }
+
     synchronized void execute(List<String> commandArgs) {
 
         if (commandArgs.isEmpty()) {
@@ -88,23 +130,7 @@ public class Console {
 
         if (ImmutableList.of("help", "?").contains(head)) {
 
-            try {
-
-                String help = CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("help.txt").openStream())
-                );
-
-                String ref = (
-                    "sdfs " + config.getValue("sdfs").render(
-                        ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
-                    ) + "\n"
-                ).replaceAll("(.+)\n", "    $1\n");
-
-                System.out.println(help + "Config:\n\n" + ref);
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println(help());
 
         } else if (ImmutableList.of("quit", "q").contains(head)) {
 

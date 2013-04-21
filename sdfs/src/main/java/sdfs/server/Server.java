@@ -94,4 +94,17 @@ public class Server {
         bossGroup = null;
         workerGroup = null;
     }
+
+
+
+    public synchronized String toString() {
+        StringBuilder string = new StringBuilder();
+        if (started) {
+            string.append("Server is listening on port " + port);
+        } else {
+            string.append("Server is not running.");
+        }
+        return string.toString();
+    }
+
 }
