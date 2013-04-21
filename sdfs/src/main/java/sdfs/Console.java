@@ -5,7 +5,6 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
-import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -18,13 +17,9 @@ import sdfs.ssl.ProtectedKeyStore;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.ConnectException;
-import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 public class Console {
@@ -42,7 +37,7 @@ public class Console {
         try {
             console = new ConsoleReader();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage(), e);
         }
         shutdownHook = new Thread(new Runnable() {
             public void run() {
@@ -89,13 +84,13 @@ public class Console {
         try {
 
             str.append(
-                    CharStreams.toString(new InputStreamReader(
-                            Resources.getResource("help.txt").openStream())
-                    )
+                CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("help.txt").openStream())
+                )
             ).append("\n");
 
         } catch (IOException e) {
-            str.append(e.getMessage()).append("\n");
+            str.append("Error: " + e.getMessage()).append("\n");
         }
 
         return str.toString();
@@ -106,11 +101,11 @@ public class Console {
         StringBuilder str = new StringBuilder();
 
         str.append("Config:\n\n").append(
-                (
-                        "sdfs " + config.getValue("sdfs").render(
-                                ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
-                        ) + "\n"
-                ).replaceAll("(.+)\n", "    $1\n")
+            (
+                "sdfs " + config.getValue("sdfs").render(
+                    ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                ) + "\n"
+            ).replaceAll("(.+)\n", "    $1\n")
         );
 
         return str.toString();
@@ -216,30 +211,15 @@ public class Console {
             } else if (server != null) {
                 System.out.println("Server already started.");
             } else {
-
-                Integer port = getPortOrPrintError();
-                if (port != null) {
-
+                try {
+                    int port = getPort();
                     System.out.println("Starting server on port " + port + "...");
-
-                    String certPath = config.getString("sdfs.cert-path");
-
-                    ProtectedKeyStore protectedKeyStore;
-                    // TODO real keystore
-                    try {
-                        char[] password = "asdfgh".toCharArray();
-                        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-                        try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "server-keystore")).openBufferedStream()) {
-                            keyStore.load(keystoreIn, password);
-                        }
-                        protectedKeyStore = new ProtectedKeyStore(keyStore, password);
-                    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
-                        throw new RuntimeException(e); // TODO decent error message
-                    }
-                    server = new Server(port, protectedKeyStore);
+                    server = new Server(port, keyStore("server"));
                     server.start();
-
                     System.out.println("Server started on port " + port + ".");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                    server = null;
                 }
             }
 
@@ -257,52 +237,45 @@ public class Console {
             } else if (client != null) {
                 System.out.println("Already connected.");
             } else {
-
-                String host = tail.size() < 1 ? "localhost" : tail.get(0);
-
-                Integer port = getPortOrPrintError();
-                if (port != null) {
+                try {
+                    String host = tail.size() < 1 ? "localhost" : tail.get(0);
+                    Integer port = getPort();
                     System.out.println("Connecting to " + host + ":" + port + "...");
-
-                    String certPath = config.getString("sdfs.cert-path");
-
-                    ProtectedKeyStore protectedKeyStore;
-                    // TODO real keystore
-                    try {
-                        char[] password = "asdfgh".toCharArray();
-                        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-                        try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "client-keystore")).openBufferedStream()) {
-                            keyStore.load(keystoreIn, password);
-                        }
-                        protectedKeyStore = new ProtectedKeyStore(keyStore, password);
-                    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
-                        throw new RuntimeException(e); // TODO decent error message
-                    }
-                    client = new Client(host, port, protectedKeyStore);
-                    try {
-                        client.connect();
-                    } catch (ConnectException e) {
-                        System.out.println(e.getMessage());
-                        client = null;
-                        return;
-                    }
-
+                    client = new Client(host, port, keyStore("client"));
                     System.out.println("Connected to " + host + ":" + port + ".");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                    client = null;
                 }
             }
         }
 
     }
 
-    Integer getPortOrPrintError() {
+    ProtectedKeyStore keyStore(String identity) {
+        try {
+            ProtectedKeyStore protectedKeyStore = ProtectedKeyStore.createEmpty();
+            CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
+            CertCollection.Cert cert = certs.byCN.get(cn);
+            if (cert == null) {
+                throw new RuntimeException("No such cert: " + cn);
+            }
+            X509Certificate x509 = cert.x509;
+            protectedKeyStore.keyStore.setCertificateEntry("sdfs-server", x509);
+            return protectedKeyStore;
+        } catch (KeyStoreException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    int getPort() {
         try {
             return config.getInt("sdfs.port");
         } catch (ConfigException.Missing e) {
-            System.out.println("Port is not specified.");
+            throw new RuntimeException("Port is not specified.", e);
         } catch (ConfigException.BadValue e) {
-            System.out.println("Port must be an integer.");
+            throw new RuntimeException("Port must be an integer.", e);
         }
-        return null;
     }
 
     void loadCerts() {

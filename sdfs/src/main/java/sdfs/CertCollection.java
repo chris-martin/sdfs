@@ -12,10 +12,10 @@ import java.util.*;
 
 public class CertCollection {
 
-    private static class Cert {
-        CN cn;
-        X509Certificate x509;
-        File file;
+    public static class Cert {
+        public CN cn;
+        public X509Certificate x509;
+        public File file;
     }
 
     public final Map<CN, Cert> byCN = new HashMap<>();
