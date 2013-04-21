@@ -5,6 +5,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import sdfs.ssl.ProtectedKeyStore;
+import sdfs.store.Store;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -15,6 +16,7 @@ public class Server {
 
     private final int port;
     private final ProtectedKeyStore keyStore;
+    private final Store store;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -25,11 +27,13 @@ public class Server {
 
     /**
      * @param port port to bind to
-     * @param keyStore key store with the server and CA certs.
+     * @param keyStore key store with the server and CA certs
+     * @param store file store
      */
-    public Server(int port, ProtectedKeyStore keyStore) {
+    public Server(int port, ProtectedKeyStore keyStore, Store store) {
         this.port = port;
         this.keyStore = keyStore;
+        this.store = store;
     }
 
     /**
@@ -67,7 +71,7 @@ public class Server {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(keyStore));
+                    .childHandler(new ServerInitializer(keyStore, store));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
         } catch (InterruptedException ignored) {
@@ -100,7 +104,7 @@ public class Server {
     public synchronized String toString() {
         StringBuilder string = new StringBuilder();
         if (started) {
-            string.append("Server is listening on port " + port);
+            string.append("Server is listening on port ").append(port);
         } else {
             string.append("Server is not running.");
         }

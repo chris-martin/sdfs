@@ -15,6 +15,8 @@ import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
 import sdfs.ssl.ProtectedKeyStore;
+import sdfs.store.SimpleStore;
+import sdfs.store.Store;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +38,8 @@ public class Console {
     Server server;
     Client client;
     CertCollection certs;
+    Store serverStore;
+    Store clientStore;
     boolean halt;
 
     void run() {
@@ -236,7 +240,7 @@ public class Console {
                     } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
                         throw new RuntimeException(e); // TODO decent error message
                     }
-                    server = new Server(port, protectedKeyStore);
+                    server = new Server(port, protectedKeyStore, serverStore);
                     server.start();
 
                     System.out.println("Server started on port " + port + ".");
@@ -278,7 +282,7 @@ public class Console {
                     } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
                         throw new RuntimeException(e); // TODO decent error message
                     }
-                    client = new Client(host, port, protectedKeyStore);
+                    client = new Client(host, port, protectedKeyStore, clientStore);
                     try {
                         client.connect();
                     } catch (ConnectException e) {
@@ -289,6 +293,16 @@ public class Console {
 
                     System.out.println("Connected to " + host + ":" + port + ".");
                 }
+            }
+        } else if (client != null) {
+            if (head.equals("get") && tail.size() == 1) {
+                String filename = tail.get(0);
+                System.out.println("Getting file " + filename);
+                client.get(filename);
+            } else if (head.equals("put") && tail.size() == 1) {
+                String filename = tail.get(0);
+                System.out.println("Putting file " + filename);
+                client.put(filename);
             }
         }
 
@@ -310,10 +324,16 @@ public class Console {
         certs.load(new File(config.getString("sdfs.cert-path")));
     }
 
+    void initStores() {
+        serverStore = new SimpleStore(new File(config.getString("sdfs.server-store-path")));
+        clientStore = new SimpleStore(new File(config.getString("sdfs.client-store-path")));
+    }
+
     public static void main(String[] args) {
         Console console = new Console();
         console.config = config(args);
         console.loadCerts();
+        console.initStores();
         console.run();
     }
 

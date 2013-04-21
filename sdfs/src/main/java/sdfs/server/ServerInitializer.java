@@ -5,10 +5,12 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.ssl.ProtectedKeyStore;
 import sdfs.ssl.SslContextFactory;
+import sdfs.store.Store;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -18,9 +20,11 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
     private static final Logger log = LoggerFactory.getLogger(ServerInitializer.class);
 
     private final SSLContext sslContext;
+    private final Store store;
 
-    public ServerInitializer(ProtectedKeyStore keyStore) {
+    public ServerInitializer(ProtectedKeyStore keyStore, Store store) {
         sslContext = new SslContextFactory().newContext(keyStore); // TODO
+        this.store = store;
     }
 
     @Override
@@ -35,7 +39,8 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
 
 //        pipeline.addLast(new SnappyFramedDecoder());
 //        pipeline.addLast(new SnappyFramedEncoder());
-        pipeline.addLast(new ServerHandler());
+        pipeline.addLast(new ChunkedWriteHandler());
+        pipeline.addLast(new ServerHandler(store));
     }
 
     @Override
