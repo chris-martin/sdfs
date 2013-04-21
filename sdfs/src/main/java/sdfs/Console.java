@@ -33,6 +33,7 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
+    boolean halt;
 
     void run() {
         System.out.println(config);
@@ -49,7 +50,6 @@ public class Console {
         });
         Runtime.getRuntime().addShutdownHook(shutdownHook);
 
-        boolean halt = false;
         while (!halt) {
 
             String line;
@@ -60,13 +60,7 @@ public class Console {
                 continue;
             }
 
-            List<String> args = ImmutableList.copyOf(commandSplitter.split(line));
-            if (!args.isEmpty()) {
-                ExecutionResult result = execute(args);
-                if (result.halt) {
-                    halt = true;
-                }
-            }
+            execute(ImmutableList.copyOf(commandSplitter.split(line)));
         }
     }
 
@@ -84,7 +78,11 @@ public class Console {
         }
     }
 
-    ExecutionResult execute(List<String> commandArgs) {
+    void execute(List<String> commandArgs) {
+
+        if (commandArgs.isEmpty()) {
+            return;
+        }
 
         String head = commandArgs.get(0);
         List<String> tail = commandArgs.subList(1, commandArgs.size());
@@ -109,7 +107,7 @@ public class Console {
 
         } else if (ImmutableList.of("quit", "q").contains(head)) {
 
-            return ExecutionResult.halt();
+            halt = true;
 
         } else if (ImmutableList.of("set").contains(head)) {
 
@@ -204,23 +202,6 @@ public class Console {
                     System.out.println("Connected to " + host + ":" + port + ".");
                 }
             }
-        }
-
-        return ExecutionResult.ok();
-    }
-
-    static class ExecutionResult {
-
-        boolean halt;
-
-        static ExecutionResult ok() {
-            return new ExecutionResult();
-        }
-
-        static ExecutionResult halt() {
-            ExecutionResult x = new ExecutionResult();
-            x.halt = true;
-            return x;
         }
 
     }
