@@ -46,31 +46,19 @@ public class Console {
 
         new Thread() {
             public void run() {
+
+                Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+
                 boolean halt = false;
                 while (!halt) {
+
                     try {
-                        String commandLine = startedState.console.readLine("sdfs> ");
-                        List<String> commandArgs = ImmutableList.copyOf(commandSplitter.split(commandLine));
-                        if (!commandArgs.isEmpty()) {
-                            String head = commandArgs.get(0);
-                            List<String> tail = commandArgs.subList(1, commandArgs.size());
-
-                            if (ImmutableList.of("help", "?").contains(head)) {
-
-                                String help = CharStreams.toString(new InputStreamReader(
-                                    Resources.getResource("help.txt").openStream())
-                                );
-
-                                String ref = CharStreams.toString(new InputStreamReader(
-                                    Resources.getResource("reference.conf").openStream())
-                                ).replaceAll("(.+)\n", "    $1\n");
-
-                                System.out.println(help + "Config format:\n\n" + ref);
-
-                            } else if (ImmutableList.of("quit", "q").contains(head)) {
-
+                        String line = startedState.console.readLine("sdfs> ");
+                        List<String> args = ImmutableList.copyOf(commandSplitter.split(line));
+                        if (!args.isEmpty()) {
+                            ExecutionResult result = execute(args);
+                            if (result.halt) {
                                 halt = true;
-
                             }
                         }
                     } catch (IOException e) {
@@ -93,7 +81,53 @@ public class Console {
         }
     }
 
-    static final Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+    ExecutionResult execute(List<String> commandArgs) {
+
+        String head = commandArgs.get(0);
+        List<String> tail = commandArgs.subList(1, commandArgs.size());
+
+        if (ImmutableList.of("help", "?").contains(head)) {
+
+            try {
+
+                String help = CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("help.txt").openStream())
+                );
+
+                String ref = CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("reference.conf").openStream())
+                ).replaceAll("(.+)\n", "    $1\n");
+
+                System.out.println(help + "Config format:\n\n" + ref);
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        } else if (ImmutableList.of("quit", "q").contains(head)) {
+
+            return ExecutionResult.halt();
+
+        }
+
+        return ExecutionResult.ok();
+    }
+
+    static class ExecutionResult {
+
+        boolean halt;
+
+        static ExecutionResult ok() {
+            return new ExecutionResult();
+        }
+
+        static ExecutionResult halt() {
+            ExecutionResult x = new ExecutionResult();
+            x.halt = true;
+            return x;
+        }
+
+    }
 
     public static void main(String[] args) {
         Console console = new Console();
