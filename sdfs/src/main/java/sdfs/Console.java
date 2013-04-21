@@ -9,6 +9,7 @@ import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import scala.tools.jline.console.ConsoleReader;
+import sdfs.client.Client;
 import sdfs.server.Server;
 import sdfs.ssl.ProtectedKeyStore;
 
@@ -55,6 +56,7 @@ public class Console {
         new Thread() {
             public void run() {
                 Server server = null;
+                Client client = null;
 
                 boolean halt = false;
                 while (!halt) {
@@ -99,7 +101,7 @@ public class Console {
 
                                 int port;
                                 try {
-                                    port = tail.size() < 1 ? 8883 : Integer.parseInt(tail.get(0));
+                                    port = tail.size() < 1 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(0));
                                 } catch (NumberFormatException e) {
                                     System.out.println("Port must be an integer.");
                                     continue;
@@ -125,6 +127,53 @@ public class Console {
                                 server.start();
 
                                 System.out.println("Server started on port " + port + ".");
+
+                            } else if (ImmutableList.of("connect", "c").contains(head)) {
+
+                                if (client != null) {
+                                    System.out.println("Already connected.");
+                                    continue;
+                                }
+
+                                String host = tail.size() < 1 ? "localhost" : tail.get(0);
+
+                                int port;
+                                try {
+                                    port = tail.size() < 2 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(1));
+                                } catch (NumberFormatException e) {
+                                    System.out.println("Port must be an integer.");
+                                    continue;
+                                }
+
+                                System.out.println("Connecting to " + host + ":" + port + "...");
+
+                                String certPath = config.getString("sdfs.cert-path");
+
+                                ProtectedKeyStore protectedKeyStore;
+                                // TODO real keystore
+                                try {
+                                    char[] password = "asdfgh".toCharArray();
+                                    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                                    try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "client-keystore")).openBufferedStream()) {
+                                        keyStore.load(keystoreIn, password);
+                                    }
+                                    protectedKeyStore = new ProtectedKeyStore(keyStore, password);
+                                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException e) {
+                                    throw new RuntimeException(e); // TODO decent error message
+                                }
+                                client = new Client(host, port, protectedKeyStore);
+                                client.connect();
+
+                                System.out.println("Connected to " + host + ":" + port + ".");
+                            } else if ("disconnect".equals(head)) {
+                                if (client == null) {
+                                    System.out.println("Not connected.");
+                                } else {
+                                    System.out.println("Disconnecting...");
+                                    client.disconnect();
+                                    server = null;
+                                    System.out.println("Disconnected.");
+                                }
                             }
                         }
                     } catch (IOException e) {
