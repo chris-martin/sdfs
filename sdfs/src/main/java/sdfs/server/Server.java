@@ -13,8 +13,6 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class Server {
 
-    public static final int DEFAULT_PORT = 8443;
-
     private final int port;
     private final ProtectedKeyStore keyStore;
 

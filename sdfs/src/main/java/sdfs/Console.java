@@ -3,10 +3,12 @@ package sdfs;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
@@ -106,6 +108,17 @@ public class Console {
 
             return ExecutionResult.halt();
 
+        } else if (ImmutableList.of("set").contains(head)) {
+
+            if (tail.size() == 2) {
+
+                String key = tail.get(0);
+                String value = tail.get(1);
+
+                config = ConfigFactory.parseMap(ImmutableMap.of(key, value)).atPath("sdfs").withFallback(config);
+
+            }
+
         } else if (ImmutableList.of("server", "s").contains(head)) {
 
             if (tail.size() == 1 && tail.get(0).equals("stop")) {
@@ -121,12 +134,7 @@ public class Console {
                 System.out.println("Server already started.");
             } else {
 
-                Integer port = null;
-                try {
-                    port = tail.size() < 1 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(0));
-                } catch (NumberFormatException e) {
-                    System.out.println("Port must be an integer.");
-                }
+                Integer port = getPortOrPrintError();
                 if (port != null) {
 
                     System.out.println("Starting server on port " + port + "...");
@@ -160,13 +168,7 @@ public class Console {
 
                 String host = tail.size() < 1 ? "localhost" : tail.get(0);
 
-                Integer port = null;
-                try {
-                    port = tail.size() < 2 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(1));
-                } catch (NumberFormatException e) {
-                    System.out.println("Port must be an integer.");
-                }
-
+                Integer port = getPortOrPrintError();
                 if (port != null) {
                     System.out.println("Connecting to " + host + ":" + port + "...");
 
@@ -219,6 +221,17 @@ public class Console {
             return x;
         }
 
+    }
+
+    Integer getPortOrPrintError() {
+        try {
+            return config.getInt("sdfs.port");
+        } catch (ConfigException.Missing e) {
+            System.out.println("Port is not specified.");
+        } catch (ConfigException.BadValue e) {
+            System.out.println("Port must be an integer.");
+        }
+        return null;
     }
 
     public static void main(String[] args) {
