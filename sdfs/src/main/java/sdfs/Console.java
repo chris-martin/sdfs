@@ -7,9 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.*;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
@@ -36,7 +34,6 @@ public class Console {
     boolean halt;
 
     void run() {
-        System.out.println(config);
         try {
             console = new ConsoleReader();
         } catch (IOException e) {
@@ -44,8 +41,10 @@ public class Console {
         }
         shutdownHook = new Thread(new Runnable() {
             public void run() {
-                shutdownHook = null;
-                stop();
+                synchronized(Console.this) {
+                    shutdownHook = null;
+                    stop();
+                }
             }
         });
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -78,7 +77,7 @@ public class Console {
         }
     }
 
-    void execute(List<String> commandArgs) {
+    synchronized void execute(List<String> commandArgs) {
 
         if (commandArgs.isEmpty()) {
             return;
@@ -95,11 +94,13 @@ public class Console {
                     Resources.getResource("help.txt").openStream())
                 );
 
-                String ref = CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("reference.conf").openStream())
+                String ref = (
+                    "sdfs " + config.getValue("sdfs").render(
+                        ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                    ) + "\n"
                 ).replaceAll("(.+)\n", "    $1\n");
 
-                System.out.println(help + "Config format:\n\n" + ref);
+                System.out.println(help + "Config:\n\n" + ref);
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
