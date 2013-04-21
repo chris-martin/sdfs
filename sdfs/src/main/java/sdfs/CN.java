@@ -8,11 +8,14 @@ import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
 import java.security.Principal;
 
-public class CN {
+public class CN implements Comparable<CN> {
 
     public final String name;
 
     public CN(String name) {
+        if (name == null) {
+            throw new NullPointerException();
+        }
         this.name = name;
     }
 
@@ -30,8 +33,23 @@ public class CN {
         );
     }
 
+    public int compareTo(CN that) {
+        return name.compareTo(that.name);
+    }
+
     public String toString() {
         return String.format("CN=%s", name);
+    }
+
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CN cn = (CN) o;
+        return name.equals(cn.name);
+    }
+
+    public int hashCode() {
+        return name.hashCode();
     }
 
 }

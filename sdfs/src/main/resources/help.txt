@@ -1,9 +1,20 @@
 
 Commands:
 
-    help, ?             Print this message
-    quit, q             Halt and exit the SDFS console.
-    connect, c          Starts a client connection to an SDFS server.
-    server, s           Starts the SDFS server.
-    server stop         Halts the SDFS server.
-    set <key> <value>   Assigns the config property sdfs.<key> = <value>
+    ?                   Print many helpful things
+
+    help                Print this message
+    config              Print current configuration
+    status              Print a summary of what is running
+
+    quit, q             Halt and exit the SDFS console
+
+    connect, c          Start a client connection to an SDFS server
+
+    server, s           Start the SDFS server
+    server stop         Halt the SDFS server
+
+    set <key> <value>   Assign the config property sdfs.<key> = <value>
+
+    cert                Print a summary of certs
+    cert load           Reload certs from the filesystem

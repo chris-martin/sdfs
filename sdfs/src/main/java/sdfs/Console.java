@@ -7,7 +7,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
-import com.typesafe.config.*;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigRenderOptions;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
@@ -32,6 +35,7 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
+    CertCollection certs;
     boolean halt;
 
     void run() {
@@ -78,7 +82,44 @@ public class Console {
         }
     }
 
+    String help() {
+
+        StringBuilder str = new StringBuilder();
+
+        try {
+
+            str.append(
+                    CharStreams.toString(new InputStreamReader(
+                            Resources.getResource("help.txt").openStream())
+                    )
+            ).append("\n");
+
+        } catch (IOException e) {
+            str.append(e.getMessage()).append("\n");
+        }
+
+        return str.toString();
+    }
+
+    String config() {
+
+        StringBuilder str = new StringBuilder();
+
+        str.append("Config:\n\n").append(
+                (
+                        "sdfs " + config.getValue("sdfs").render(
+                                ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                        ) + "\n"
+                ).replaceAll("(.+)\n", "    $1\n")
+        );
+
+        return str.toString();
+    }
+
     String status() {
+
+        StringBuilder str = new StringBuilder();
+
         StringBuilder status = new StringBuilder();
         if (server != null) {
             status.append(server.toString()).append("\n");
@@ -86,38 +127,28 @@ public class Console {
         if (client != null) {
             status.append(client.toString()).append("\n");
         }
-        return status.toString();
-    }
-
-    String help() {
-        StringBuilder help = new StringBuilder();
-
-        try {
-
-            help.append(
-                CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("help.txt").openStream())
-                )
-            ).append("\n");
-
-        } catch (IOException e) {
-            help.append(e.getMessage()).append("\n");
+        if (status.length() == 0) {
+            status.append("Idle\n");
         }
 
-        help.append("Config:\n\n").append(
-            (
-                "sdfs " + config.getValue("sdfs").render(
-                    ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
-                ) + "\n"
-            ).replaceAll("(.+)\n", "    $1\n")
+        str.append("\nStatus:\n\n").append(
+            status.toString().replaceAll("(.+)\n", "    $1\n")
         );
 
-        String status = status();
-        if (!status.isEmpty()) {
-            help.append("\nStatus:\n\n").append(status.replaceAll("(.+)\n", "    $1\n"));
-        }
+        return str.toString();
+    }
 
-        return help.toString();
+    String certs() {
+
+        StringBuilder str = new StringBuilder();
+
+        String c = certs == null ? "" : certs.toString();
+
+        str.append("\nCertificates:\n\n").append(
+            c.replaceAll("(.+)\n", "    $1\n")
+        );
+
+        return str.toString();
     }
 
     synchronized void execute(List<String> commandArgs) {
@@ -129,7 +160,14 @@ public class Console {
         String head = commandArgs.get(0);
         List<String> tail = commandArgs.subList(1, commandArgs.size());
 
-        if (ImmutableList.of("help", "?").contains(head)) {
+        if (ImmutableList.of("?").contains(head)) {
+
+            System.out.println(help());
+            System.out.println(config());
+            System.out.println(status());
+            System.out.println(certs());
+
+        } else if (ImmutableList.of("help").contains(head)) {
 
             System.out.println(help());
 
@@ -146,6 +184,22 @@ public class Console {
 
                 config = ConfigFactory.parseMap(ImmutableMap.of(key, value)).atPath("sdfs").withFallback(config);
 
+            }
+
+        } else if ("config".equals(head)) {
+
+            System.out.println(config());
+
+        } else if ("status".equals(head)) {
+
+            System.out.println(status());
+
+        } else if ("cert".equals(head)) {
+
+            if (tail.size() == 0) {
+                System.out.println(certs());
+            } else if (tail.get(0).equals("load")) {
+                loadCerts();
             }
 
         } else if (ImmutableList.of("server", "s").contains(head)) {
@@ -251,9 +305,15 @@ public class Console {
         return null;
     }
 
+    void loadCerts() {
+        certs = new CertCollection();
+        certs.load(new File(config.getString("sdfs.cert-path")));
+    }
+
     public static void main(String[] args) {
         Console console = new Console();
         console.config = config(args);
+        console.loadCerts();
         console.run();
     }
 
