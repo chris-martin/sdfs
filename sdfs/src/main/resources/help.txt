@@ -1,6 +1,10 @@
 
 Implemented commands:
 
-    help, ?       Print this message
-    quit, q       Halt and exit the SDFS console.
+    help, ?             Print this message
+    quit, q             Halt and exit the SDFS console.
+    connect, c          Starts a client connection to an SDFS server.
+    server, s           Starts the SDFS server.
+    server stop         Halts the SDFS server.
+    set <key> <value>   Assigns the config property sdfs.<key> = <value>
 

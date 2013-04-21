@@ -1,12 +1,14 @@
 package sdfs;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
@@ -16,6 +18,7 @@ import sdfs.ssl.ProtectedKeyStore;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -25,185 +28,218 @@ import java.util.List;
 public class Console {
 
     Config config = ConfigFactory.empty();
+    ConsoleReader console;
+    Thread shutdownHook;
+    Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+    Server server;
+    Client client;
 
-    static class StartedState {
-        ConsoleReader console;
-        Thread shutdownHook;
-    }
-
-    StartedState startedState;
-
-    void start() {
+    void run() {
         System.out.println(config);
-
-        if (startedState == null) {
-            startedState = new StartedState();
-            try {
-                startedState.console = new ConsoleReader();
-            } catch (IOException e) {
-                startedState = null;
-                throw new RuntimeException(e);
-            }
-            startedState.shutdownHook = new Thread(new Runnable() {
-                public void run() {
-                    startedState.shutdownHook = null;
-                    stop();
-                }
-            });
-            Runtime.getRuntime().addShutdownHook(startedState.shutdownHook);
+        try {
+            console = new ConsoleReader();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-
-        new Thread() {
+        shutdownHook = new Thread(new Runnable() {
             public void run() {
-                Server server = null;
-                Client client = null;
+                shutdownHook = null;
+                stop();
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
 
-                boolean halt = false;
-                while (!halt) {
-                    try {
-                        String commandLine = startedState.console.readLine("sdfs> ");
-                        List<String> commandArgs = ImmutableList.copyOf(commandSplitter.split(commandLine));
-                        if (!commandArgs.isEmpty()) {
-                            String head = commandArgs.get(0);
-                            List<String> tail = commandArgs.subList(1, commandArgs.size());
+        boolean halt = false;
+        while (!halt) {
 
-                            if (ImmutableList.of("help", "?").contains(head)) {
+            String line;
+            try {
+                line = console.readLine("sdfs> ");
+            } catch (IOException e) {
+                halt = true;
+                continue;
+            }
 
-                                String help = Resources.toString(Resources.getResource("help.txt"), Charsets.UTF_8);
-
-                                String ref = Resources.toString(Resources.getResource("reference.conf"), Charsets.UTF_8
-                                ).replaceAll("(.+)\n", "    $1\n");
-
-                                System.out.println(help + "Config format:\n\n" + ref);
-
-                            } else if (ImmutableList.of("quit", "q").contains(head)) {
-
-                                halt = true;
-
-                            } else if (ImmutableList.of("server", "s").contains(head)) {
-
-                                if (tail.size() == 1 && tail.get(0).equals("stop")) {
-                                    if (server == null) {
-                                        System.out.println("Server not started.");
-                                    } else {
-                                        System.out.println("Stopping server...");
-                                        server.stop();
-                                        server = null;
-                                        System.out.println("Server stopped.");
-                                    }
-                                    continue;
-                                }
-
-                                if (server != null) {
-                                    System.out.println("Server already started.");
-                                    continue;
-                                }
-
-                                int port;
-                                try {
-                                    port = tail.size() < 1 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(0));
-                                } catch (NumberFormatException e) {
-                                    System.out.println("Port must be an integer.");
-                                    continue;
-                                }
-
-                                System.out.println("Starting server on port " + port + "...");
-
-                                String certPath = config.getString("sdfs.cert-path");
-
-                                ProtectedKeyStore protectedKeyStore;
-                                // TODO real keystore
-                                try {
-                                    char[] password = "asdfgh".toCharArray();
-                                    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-                                    try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "server-keystore")).openBufferedStream()) {
-                                        keyStore.load(keystoreIn, password);
-                                    }
-                                    protectedKeyStore = new ProtectedKeyStore(keyStore, password);
-                                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException e) {
-                                    throw new RuntimeException(e); // TODO decent error message
-                                }
-                                server = new Server(port, protectedKeyStore);
-                                server.start();
-
-                                System.out.println("Server started on port " + port + ".");
-
-                            } else if (ImmutableList.of("connect", "c").contains(head)) {
-
-                                if (client != null) {
-                                    System.out.println("Already connected.");
-                                    continue;
-                                }
-
-                                String host = tail.size() < 1 ? "localhost" : tail.get(0);
-
-                                int port;
-                                try {
-                                    port = tail.size() < 2 ? Server.DEFAULT_PORT : Integer.parseInt(tail.get(1));
-                                } catch (NumberFormatException e) {
-                                    System.out.println("Port must be an integer.");
-                                    continue;
-                                }
-
-                                System.out.println("Connecting to " + host + ":" + port + "...");
-
-                                String certPath = config.getString("sdfs.cert-path");
-
-                                ProtectedKeyStore protectedKeyStore;
-                                // TODO real keystore
-                                try {
-                                    char[] password = "asdfgh".toCharArray();
-                                    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-                                    try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "client-keystore")).openBufferedStream()) {
-                                        keyStore.load(keystoreIn, password);
-                                    }
-                                    protectedKeyStore = new ProtectedKeyStore(keyStore, password);
-                                } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException e) {
-                                    throw new RuntimeException(e); // TODO decent error message
-                                }
-                                client = new Client(host, port, protectedKeyStore);
-                                client.connect();
-
-                                System.out.println("Connected to " + host + ":" + port + ".");
-                            } else if ("disconnect".equals(head)) {
-                                if (client == null) {
-                                    System.out.println("Not connected.");
-                                } else {
-                                    System.out.println("Disconnecting...");
-                                    client.disconnect();
-                                    client = null;
-                                    System.out.println("Disconnected.");
-                                }
-                            }
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+            List<String> args = ImmutableList.copyOf(commandSplitter.split(line));
+            if (!args.isEmpty()) {
+                ExecutionResult result = execute(args);
+                if (result.halt) {
+                    halt = true;
                 }
             }
-        }.start();
-
+        }
     }
 
     void stop() {
-        if (startedState != null) {
+        if (console != null) {
             try {
-                startedState.console.getTerminal().restore();
+                console.getTerminal().restore();
+                console = null;
             } catch (Throwable ignored) {
             }
-            if (startedState.shutdownHook != null) {
-                Runtime.getRuntime().removeShutdownHook(startedState.shutdownHook);
-            }
-            startedState = null;
+        }
+        if (shutdownHook != null) {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            shutdownHook = null;
         }
     }
 
-    static final Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+    ExecutionResult execute(List<String> commandArgs) {
+
+        String head = commandArgs.get(0);
+        List<String> tail = commandArgs.subList(1, commandArgs.size());
+
+        if (ImmutableList.of("help", "?").contains(head)) {
+
+            try {
+
+                String help = CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("help.txt").openStream())
+                );
+
+                String ref = CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("reference.conf").openStream())
+                ).replaceAll("(.+)\n", "    $1\n");
+
+                System.out.println(help + "Config format:\n\n" + ref);
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+        } else if (ImmutableList.of("quit", "q").contains(head)) {
+
+            return ExecutionResult.halt();
+
+        } else if (ImmutableList.of("set").contains(head)) {
+
+            if (tail.size() == 2) {
+
+                String key = tail.get(0);
+                String value = tail.get(1);
+
+                config = ConfigFactory.parseMap(ImmutableMap.of(key, value)).atPath("sdfs").withFallback(config);
+
+            }
+
+        } else if (ImmutableList.of("server", "s").contains(head)) {
+
+            if (tail.size() == 1 && tail.get(0).equals("stop")) {
+                if (server == null) {
+                    System.out.println("Server not started.");
+                } else {
+                    System.out.println("Stopping server...");
+                    server.stop();
+                    server = null;
+                    System.out.println("Server stopped.");
+                }
+            } else if (server != null) {
+                System.out.println("Server already started.");
+            } else {
+
+                Integer port = getPortOrPrintError();
+                if (port != null) {
+
+                    System.out.println("Starting server on port " + port + "...");
+
+                    String certPath = config.getString("sdfs.cert-path");
+
+                    ProtectedKeyStore protectedKeyStore;
+                    // TODO real keystore
+                    try {
+                        char[] password = "asdfgh".toCharArray();
+                        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                        try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "server-keystore")).openBufferedStream()) {
+                            keyStore.load(keystoreIn, password);
+                        }
+                        protectedKeyStore = new ProtectedKeyStore(keyStore, password);
+                    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
+                        throw new RuntimeException(e); // TODO decent error message
+                    }
+                    server = new Server(port, protectedKeyStore);
+                    server.start();
+
+                    System.out.println("Server started on port " + port + ".");
+                }
+            }
+
+        } else if (ImmutableList.of("client", "c").contains(head)) {
+
+            if (tail.size() == 1 && tail.get(0).equals("stop")) {
+                if (client == null) {
+                    System.out.println("Client not started.");
+                } else {
+                    System.out.println("Stopping client...");
+                    client.disconnect();
+                    client = null;
+                    System.out.println("Client stopped.");
+                }
+            } else if (client != null) {
+                System.out.println("Already connected.");
+            } else {
+
+                String host = tail.size() < 1 ? "localhost" : tail.get(0);
+
+                Integer port = getPortOrPrintError();
+                if (port != null) {
+                    System.out.println("Connecting to " + host + ":" + port + "...");
+
+                    String certPath = config.getString("sdfs.cert-path");
+
+                    ProtectedKeyStore protectedKeyStore;
+                    // TODO real keystore
+                    try {
+                        char[] password = "asdfgh".toCharArray();
+                        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                        try (InputStream keystoreIn = Files.asByteSource(new File(certPath, "client-keystore")).openBufferedStream()) {
+                            keyStore.load(keystoreIn, password);
+                        }
+                        protectedKeyStore = new ProtectedKeyStore(keyStore, password);
+                    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
+                        throw new RuntimeException(e); // TODO decent error message
+                    }
+                    client = new Client(host, port, protectedKeyStore);
+                    client.connect();
+
+                    System.out.println("Connected to " + host + ":" + port + ".");
+                }
+            }
+        }
+
+        return ExecutionResult.ok();
+    }
+
+    static class ExecutionResult {
+
+        boolean halt;
+
+        static ExecutionResult ok() {
+            return new ExecutionResult();
+        }
+
+        static ExecutionResult halt() {
+            ExecutionResult x = new ExecutionResult();
+            x.halt = true;
+            return x;
+        }
+
+    }
+
+    Integer getPortOrPrintError() {
+        try {
+            return config.getInt("sdfs.port");
+        } catch (ConfigException.Missing e) {
+            System.out.println("Port is not specified.");
+        } catch (ConfigException.BadValue e) {
+            System.out.println("Port must be an integer.");
+        }
+        return null;
+    }
 
     public static void main(String[] args) {
         Console console = new Console();
         console.config = config(args);
-        console.start();
+        console.run();
     }
 
     static Config config(String[] args) {
