@@ -1,5 +1,5 @@
 
-Implemented commands:
+Commands:
 
     help, ?             Print this message
     quit, q             Halt and exit the SDFS console.
@@ -7,4 +7,3 @@ Implemented commands:
     server, s           Starts the SDFS server.
     server stop         Halts the SDFS server.
     set <key> <value>   Assigns the config property sdfs.<key> = <value>
-

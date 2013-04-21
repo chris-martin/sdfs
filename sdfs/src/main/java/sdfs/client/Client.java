@@ -64,4 +64,15 @@ public class Client {
         group.shutdown();
         group = null;
     }
+
+    public synchronized String toString() {
+        StringBuilder string = new StringBuilder();
+        if (group != null) {
+            string.append(String.format("Client is connected to %s:%d", host, port));
+        } else {
+            string.append("Client is disconnected.");
+        }
+        return string.toString();
+    }
+
 }

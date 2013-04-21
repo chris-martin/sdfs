@@ -7,9 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.*;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
@@ -37,7 +35,6 @@ public class Console {
     boolean halt;
 
     void run() {
-        System.out.println(config);
         try {
             console = new ConsoleReader();
         } catch (IOException e) {
@@ -45,8 +42,10 @@ public class Console {
         }
         shutdownHook = new Thread(new Runnable() {
             public void run() {
-                shutdownHook = null;
-                stop();
+                synchronized(Console.this) {
+                    shutdownHook = null;
+                    stop();
+                }
             }
         });
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -79,7 +78,49 @@ public class Console {
         }
     }
 
-    void execute(List<String> commandArgs) {
+    String status() {
+        StringBuilder status = new StringBuilder();
+        if (server != null) {
+            status.append(server.toString()).append("\n");
+        }
+        if (client != null) {
+            status.append(client.toString()).append("\n");
+        }
+        return status.toString();
+    }
+
+    String help() {
+        StringBuilder help = new StringBuilder();
+
+        try {
+
+            help.append(
+                CharStreams.toString(new InputStreamReader(
+                    Resources.getResource("help.txt").openStream())
+                )
+            ).append("\n");
+
+        } catch (IOException e) {
+            help.append(e.getMessage()).append("\n");
+        }
+
+        help.append("Config:\n\n").append(
+            (
+                "sdfs " + config.getValue("sdfs").render(
+                    ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                ) + "\n"
+            ).replaceAll("(.+)\n", "    $1\n")
+        );
+
+        String status = status();
+        if (!status.isEmpty()) {
+            help.append("\nStatus:\n\n").append(status.replaceAll("(.+)\n", "    $1\n"));
+        }
+
+        return help.toString();
+    }
+
+    synchronized void execute(List<String> commandArgs) {
 
         if (commandArgs.isEmpty()) {
             return;
@@ -90,21 +131,7 @@ public class Console {
 
         if (ImmutableList.of("help", "?").contains(head)) {
 
-            try {
-
-                String help = CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("help.txt").openStream())
-                );
-
-                String ref = CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("reference.conf").openStream())
-                ).replaceAll("(.+)\n", "    $1\n");
-
-                System.out.println(help + "Config format:\n\n" + ref);
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println(help());
 
         } else if (ImmutableList.of("quit", "q").contains(head)) {
 
