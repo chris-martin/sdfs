@@ -23,4 +23,14 @@ public class ClientHandler extends ChannelInboundByteHandlerAdapter {
     protected void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
         log.info("received `{}'", in.readBytes(in.readableBytes()).toString(Charsets.UTF_8));
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        try {
+            throw cause;
+        } catch (Throwable e) {
+            log.error("", e);
+        }
+        ctx.close();
+    }
 }

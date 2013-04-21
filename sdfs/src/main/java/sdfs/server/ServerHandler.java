@@ -67,4 +67,14 @@ public class ServerHandler extends ChannelInboundByteHandlerAdapter {
             return;
         }
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        try {
+            throw cause;
+        } catch (Throwable e) {
+            log.error("", e);
+        }
+        ctx.close();
+    }
 }
