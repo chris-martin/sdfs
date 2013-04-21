@@ -25,7 +25,7 @@ public class SslContextFactory {
             context.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
             return context;
         } catch (NoSuchAlgorithmException | KeyManagementException | UnrecoverableKeyException | KeyStoreException e) {
-            throw new RuntimeException(e); // TODO
+            throw new RuntimeException(e.getMessage(), e); // TODO
         }
     }
 }
