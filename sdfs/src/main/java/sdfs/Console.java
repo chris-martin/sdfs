@@ -42,7 +42,7 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
-    CertCollection certs;
+    IdentityCollection certs;
     Store serverStore;
     Store clientStore;
     boolean halt;
@@ -315,7 +315,7 @@ public class Console {
         try {
             ProtectedKeyStore protectedKeyStore = ProtectedKeyStore.createEmpty(); // TODO
             CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
-            CertCollection.Cert cert = certs.byCN.get(cn);
+            IdentityCollection.Identity cert = certs.byCN.get(cn);
             if (cert == null) {
                 throw new RuntimeException("No such cert: " + cn);
             }
@@ -339,7 +339,7 @@ public class Console {
     }
 
     void loadCerts() {
-        certs = new CertCollection();
+        certs = new IdentityCollection();
         certs.load(new File(config.getString("sdfs.cert-path")));
     }
 

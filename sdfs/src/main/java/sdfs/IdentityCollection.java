@@ -11,16 +11,16 @@ import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
-public class CertCollection {
+public class IdentityCollection {
 
-    public static class Cert {
+    public static class Identity {
         public CN cn;
         public X509Certificate x509;
         public Key key;
         public File file;
     }
 
-    public final Map<CN, Cert> byCN = new HashMap<>();
+    public final Map<CN, Identity> byCN = new HashMap<>();
 
     public final List<String> errors = new ArrayList<>();
 
@@ -28,18 +28,18 @@ public class CertCollection {
         try {
             for (String filename : dir.list(new PatternFilenameFilter(".*\\.p12"))) {
                 try {
-                    Cert cert = new Cert();
-                    cert.file = new File(dir, filename);
+                    Identity identity = new Identity();
+                    identity.file = new File(dir, filename);
                     KeyStore store;
-                    try (InputStream in = new FileInputStream(cert.file)) {
+                    try (InputStream in = new FileInputStream(identity.file)) {
                         store = KeyStore.getInstance("PKCS12");
                         store.load(in, "storepass".toCharArray()); // TODO real store password
                     }
                     String alias = store.aliases().nextElement(); // TODO import all aliases
-                    cert.x509 = (X509Certificate) store.getCertificate(alias);
-                    cert.key = store.getKey(alias, "keypass".toCharArray()); // TODO real key password
-                    cert.cn = CN.fromLdapPrincipal(cert.x509.getSubjectX500Principal());
-                    byCN.put(cert.cn, cert);
+                    identity.x509 = (X509Certificate) store.getCertificate(alias);
+                    identity.key = store.getKey(alias, "keypass".toCharArray()); // TODO real key password
+                    identity.cn = CN.fromLdapPrincipal(identity.x509.getSubjectX500Principal());
+                    byCN.put(identity.cn, identity);
                 } catch (Exception e) {
                     errors.add(filename + ": " + e.getMessage());
                 }
@@ -54,8 +54,8 @@ public class CertCollection {
         List<CN> names = Lists.newArrayList(byCN.keySet());
         Collections.sort(names);
         for (CN cn : names) {
-            Cert cert = byCN.get(cn);
-            str.append(String.format("%s, %s\n", cn.name, cert.file.getName()));
+            Identity identity = byCN.get(cn);
+            str.append(String.format("%s, %s\n", cn.name, identity.file.getName()));
         }
         return str.toString();
     }
