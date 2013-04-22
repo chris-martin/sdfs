@@ -7,6 +7,8 @@ import io.netty.channel.ChannelInboundByteHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.OutputStream;
+
 public class InboundFileHandler extends ChannelInboundByteHandlerAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(InboundFileHandler.class);
@@ -19,12 +21,14 @@ public class InboundFileHandler extends ChannelInboundByteHandlerAdapter {
 
     @Override
     protected void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-        CountingOutputStream dest = inboundFile.dest;
+        OutputStream dest = inboundFile.dest();
         in.readBytes(dest, in.readableBytes());
-        log.debug("Received {} bytes of inbound file", dest.getCount());
-        if (dest.getCount() == inboundFile.size) {
-            log.debug("Finished receiving inbound file");
+        log.debug("Received {} bytes of inbound file", inboundFile.count());
+        if (inboundFile.count() == inboundFile.size) {
+            log.debug("Finished receiving inbound file ({} bytes)", inboundFile.count());
             ctx.pipeline().remove(this);
+            log.info("Hash {}match", inboundFile.hashMatches() ? "" : "mis");
+            // TODO retry on mismatch ?
             dest.flush();
             dest.close();
         }

@@ -2,6 +2,9 @@ package sdfs.client;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -66,7 +69,13 @@ public class Client {
     public synchronized void put(String filename) {
         ByteSource file = store.get(filename);
         try {
-            channel.write(protocol.encodeHeaders(ImmutableList.of("put", filename, String.valueOf(file.size()))));
+            HashCode hash = file.hash(protocol.fileHashFunction());
+            channel.write(protocol.encodeHeaders(ImmutableList.of(
+                    "put",
+                    filename,
+                    protocol.hashEncoding().encode(hash.asBytes()),
+                    String.valueOf(file.size())
+            )));
             channel.write(new ChunkedStream(file.openBufferedStream()));
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -2,6 +2,8 @@ package sdfs.server;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashCodes;
 import com.google.common.io.ByteSource;
 import com.google.common.io.CountingOutputStream;
 import io.netty.channel.ChannelFuture;
@@ -66,21 +68,29 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
             ctx.close();
         } else if (cmd.equals(protocol.put())) {
             String filename = args.get(0);
-            long size = Long.parseLong(args.get(1));
+            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(args.get(1)));
+            long size = Long.parseLong(args.get(2));
+
+            log.info("Receiving file `{}' ({} bytes) from {}", filename, size, client);
 
             InboundFile inboundFile =
-                    new InboundFile(new CountingOutputStream(store.put(filename).openBufferedStream()), size);
+                    new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
-            log.info("Receiving file `{}' ({} bytes)", filename, size);
             // TODO update policy to set client as owner
         } else if (cmd.equals(protocol.get())) {
             String filename = args.get(0);
             ByteSource file = store.get(filename);
+            HashCode hash = file.hash(protocol.fileHashFunction());
 
-            log.info("Sending file `{}' ({} bytes)", filename, file.size());
+            log.info("Sending file `{}' ({} bytes) to {}", filename, file.size(), client);
 
-            ctx.write(protocol.encodeHeaders(ImmutableList.of("put", filename, String.valueOf(file.size()))));
+            ctx.write(protocol.encodeHeaders(ImmutableList.of(
+                    "put",
+                    filename,
+                    protocol.hashEncoding().encode(hash.asBytes()),
+                    String.valueOf(file.size())
+            )));
             InputStream getSrc = file.openStream();
             ctx.write(new ChunkedStream(getSrc));
         }

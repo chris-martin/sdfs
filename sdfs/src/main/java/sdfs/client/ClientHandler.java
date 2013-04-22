@@ -2,6 +2,8 @@ package sdfs.client;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashCodes;
 import com.google.common.io.CountingOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
@@ -47,10 +49,11 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<String> {
             ctx.close();
         } else if (cmd.equals(protocol.put())) {
             String filename = args.get(0);
-            long size = Long.parseLong(args.get(1));
+            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(args.get(1)));
+            long size = Long.parseLong(args.get(2));
 
             InboundFile inboundFile =
-                    new InboundFile(new CountingOutputStream(store.put(filename).openBufferedStream()), size);
+                    new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", filename, size);

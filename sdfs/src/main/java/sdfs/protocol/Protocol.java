@@ -3,6 +3,10 @@ package sdfs.protocol;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+import com.google.common.io.BaseEncoding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -59,5 +63,13 @@ public class Protocol {
 
     public String delegateStar() {
         return "delegate*";
+    }
+
+    public HashFunction fileHashFunction() {
+        return Hashing.sha256();
+    }
+
+    public BaseEncoding hashEncoding() {
+        return BaseEncoding.base16().lowerCase();
     }
 }
