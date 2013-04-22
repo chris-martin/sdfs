@@ -1,4 +1,4 @@
-package sdfs.store;
+package sdfs.server.policy;
 
 import org.joda.time.Instant;
 import org.junit.Assert;
@@ -6,14 +6,17 @@ import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.MockFilesystem;
+import sdfs.server.policy.AccessType;
+import sdfs.server.policy.PolicyStore;
+import sdfs.server.policy.Right;
 
-public class StoreTest {
+public class PolicyStoreTest {
 
     static class Fixture {
 
         MockFilesystem filesystem = new MockFilesystem();
         MockChronos chronos = new MockChronos();
-        StoreImpl store = new StoreImpl(chronos, filesystem);
+        PolicyStore store = new PolicyStore(chronos, filesystem);
 
         CN alice = new CN("alice");
         CN bob = new CN("bob");

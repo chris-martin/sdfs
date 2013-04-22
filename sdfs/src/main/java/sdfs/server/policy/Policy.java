@@ -1,4 +1,4 @@
-package sdfs.store;
+package sdfs.server.policy;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

@@ -1,4 +1,4 @@
-package sdfs.store;
+package sdfs.server.policy;
 
 public enum AccessType {
 

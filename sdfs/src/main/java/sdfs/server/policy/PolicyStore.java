@@ -1,4 +1,4 @@
-package sdfs.store;
+package sdfs.server.policy;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -13,12 +13,12 @@ import sdfs.time.ChronosImpl;
 import java.io.File;
 import java.nio.file.Path;
 
-public class StoreImpl {
+public class PolicyStore {
 
     private final Chronos chronos;
     private final Filesystem filesystem;
 
-    public StoreImpl(
+    public PolicyStore(
         Chronos chronos,
         Filesystem filesystem
     ) {
@@ -26,8 +26,8 @@ public class StoreImpl {
         this.filesystem = filesystem;
     }
 
-    public StoreImpl fromConfig(Config config, String storeId) {
-        return new StoreImpl(
+    public PolicyStore fromConfig(Config config, String storeId) {
+        return new PolicyStore(
             new ChronosImpl(),
             new FilesystemImpl(
                 new File(config.getConfig("sdfs.store").getString(storeId)).toPath()
