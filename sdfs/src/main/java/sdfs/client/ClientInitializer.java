@@ -8,6 +8,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
         SSLEngine engine = sslContext.createSSLEngine();
         engine.setUseClientMode(true);
 
-//        pipeline.addLast(new SslHandler(engine));
+        pipeline.addLast(new SslHandler(engine));
 //        pipeline.addLast(new SnappyFramedDecoder());
 //        pipeline.addLast(new SnappyFramedEncoder());
         pipeline.addLast(new ChunkedWriteHandler());
