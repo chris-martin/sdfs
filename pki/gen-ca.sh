@@ -10,3 +10,7 @@ keytool -keystore ca.jks -storetype JKS -storepass $STOREPASS \
 keytool -keystore ca.jks -storetype JKS -storepass $STOREPASS \
         -alias ca -exportcert -rfc > ca.pem
 
+# Import ca.pem into ca-certs.jks
+keytool -keystore ca-certs.jks -storepass $STOREPASS \
+        -importcert -alias ca -file ca.pem -noprompt
+
