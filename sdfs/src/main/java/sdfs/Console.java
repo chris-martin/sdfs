@@ -1,11 +1,11 @@
 package sdfs;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -23,7 +23,6 @@ import sdfs.store.Store;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 
 public class Console {
@@ -91,10 +90,7 @@ public class Console {
 
         try {
 
-            str.append(
-                CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("help.txt").openStream())
-                )
+            str.append(Resources.toString(Resources.getResource("help.txt"), Charsets.UTF_8)
             ).append("\n");
 
         } catch (IOException e) {
