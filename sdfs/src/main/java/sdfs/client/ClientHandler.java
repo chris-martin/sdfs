@@ -3,25 +3,24 @@ package sdfs.client;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingOutputStream;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundByteHandlerAdapter;
+import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sdfs.protocol.FileTransfer;
+import sdfs.protocol.InboundFile;
+import sdfs.protocol.InboundFileHandler;
 import sdfs.protocol.Protocol;
 import sdfs.store.Store;
 
 import java.util.List;
 
-public class ClientHandler extends ChannelInboundByteHandlerAdapter {
+public class ClientHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
-    private final Store store;
-
     private final Protocol protocol = new Protocol();
+    private final Store store;
 
     public ClientHandler(Store store) {
         this.store = store;
@@ -31,26 +30,14 @@ public class ClientHandler extends ChannelInboundByteHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         log.info("channel {} active", ctx.channel().id());
 
-        ctx.pipeline().get(SslHandler.class).handshake();
+        SslHandler sslHandler = ctx.pipeline().get(SslHandler.class);
+        if (sslHandler == null) return;
+        sslHandler.handshake();
     }
 
     @Override
-    protected void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-        FileTransfer fileTransfer = ctx.attr(Protocol.fileTransferAttr).get();
-        if (fileTransfer != null) {
-            in.readBytes(fileTransfer.dest, in.readableBytes());
-            log.debug("Received {} bytes", fileTransfer.dest.getCount());
-            if (fileTransfer.dest.getCount() == fileTransfer.size) {
-                ctx.attr(Protocol.fileTransferAttr).remove();
-                fileTransfer.dest.flush();
-                fileTransfer.dest.close();
-            }
-            return;
-        }
-
-        if (in.readableBytes() < protocol.headerLength()) return;
-
-        List<String> headers = protocol.decodeHeaders(in);
+    public void messageReceived(ChannelHandlerContext ctx, String msg) throws Exception {
+        List<String> headers = protocol.decodeHeaders(msg);
         log.info("Received headers\n{}", Joiner.on('\n').join(headers));
 
         String cmd = headers.get(0);
@@ -61,8 +48,10 @@ public class ClientHandler extends ChannelInboundByteHandlerAdapter {
         } else if (cmd.equals(protocol.put())) {
             String filename = args.get(0);
             long size = Long.parseLong(args.get(1));
-            ctx.attr(Protocol.fileTransferAttr).set(
-                    new FileTransfer(new CountingOutputStream(store.put(filename).openBufferedStream()), size));
+
+            InboundFile inboundFile =
+                    new InboundFile(new CountingOutputStream(store.put(filename).openBufferedStream()), size);
+            ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", filename, size);
         }

@@ -2,41 +2,39 @@ package sdfs.protocol;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.util.AttributeKey;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class Protocol {
 
     private static final char HEADER_DELIM = '\n';
 
-    public static final AttributeKey<FileTransfer> fileTransferAttr = new AttributeKey<>("fileTransfer");
-
-    public ByteBuf encodeHeaders(Iterable<String> headers) {
-        return encodeHeaders(Joiner.on(HEADER_DELIM).useForNull("").join(headers));
+    public String encodeHeaders(Iterable<String> headers) {
+        StringBuilder s = new StringBuilder();
+        Joiner.on(HEADER_DELIM).useForNull("").appendTo(s, headers);
+        s.append(endHeader());
+        return s.toString();
     }
 
-    private ByteBuf encodeHeaders(CharSequence headers) {
-        checkArgument(headers.length() <= headerLength());
-
-        return Unpooled.copiedBuffer(Strings.padEnd(headers.toString(), headerLength(), ' '), headerCharset());
-    }
-
-    public List<String> decodeHeaders(ByteBuf in) {
-        String headers = in.readBytes(headerLength()).toString(headerCharset());
+    public List<String> decodeHeaders(String headers) {
         return ImmutableList.copyOf(Splitter.on(HEADER_DELIM).trimResults().split(headers));
     }
 
-    public int headerLength() {
-        return 512;
+    private String endHeader() {
+        return "-----END HEADER-----";
+    }
+
+    public ByteBuf headerDelimiter() {
+        return Unpooled.copiedBuffer(endHeader(), headerCharset());
+    }
+
+    public int maxHeaderLength() {
+        return 65536;
     }
 
     public Charset headerCharset() {
