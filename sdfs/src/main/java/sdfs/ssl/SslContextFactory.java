@@ -5,6 +5,7 @@ import com.typesafe.config.Config;
 import javax.net.ssl.*;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.security.KeyStore;
 
 public class SslContextFactory {
@@ -27,10 +28,9 @@ public class SslContextFactory {
 
     KeyManager[] keyManagers() throws Exception {
         KeyStore store = KeyStore.getInstance("JKS");
-        store.load(
-            new FileInputStream(new File(config.getString("sdfs.keystore.personal.file"))),
-            config.getString("sdfs.keystore.personal.store-password").toCharArray()
-        );
+        try (FileInputStream in = new FileInputStream(new File(config.getString("sdfs.keystore.personal.file")))) {
+            store.load(in, config.getString("sdfs.keystore.personal.store-password").toCharArray());
+        }
         KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         keyManagerFactory.init(store, config.getString("sdfs.keystore.personal.key-password").toCharArray());
         return keyManagerFactory.getKeyManagers();
@@ -38,10 +38,9 @@ public class SslContextFactory {
 
     TrustManager[] trustManagers() throws Exception {
         KeyStore store = KeyStore.getInstance("JKS");
-        store.load(
-            new FileInputStream(new File(config.getString("sdfs.keystore.ca.file"))),
-            config.getString("sdfs.keystore.ca.store-password").toCharArray()
-        );
+        try (InputStream in = new FileInputStream(new File(config.getString("sdfs.keystore.ca.file")))) {
+            store.load(in, config.getString("sdfs.keystore.ca.store-password").toCharArray());
+        }
         TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trustManagerFactory.init(store);
         return trustManagerFactory.getTrustManagers();

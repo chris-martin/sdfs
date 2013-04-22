@@ -3,6 +3,8 @@ import sbt.Keys._
 import sbt.Tests.Setup
 import sbtassembly.Plugin._
 import AssemblyKeys._
+import de.johoop.findbugs4sbt.FindBugs._
+import de.johoop.findbugs4sbt.ReportType
 
 object Build extends sbt.Build {
 
@@ -22,7 +24,7 @@ object Build extends sbt.Build {
   lazy val project = Project(
     id = "sdfs",
     base = file("."),
-    settings = Defaults.defaultSettings ++ junit ++ assemblySettings ++ Seq(
+    settings = Defaults.defaultSettings ++ junit ++ assemblySettings ++ findbugsSettings ++ Seq(
       organization := "sdfs",
       version := "1.0-SNAPSHOT",
       scalaVersion := "2.10.0",
@@ -48,7 +50,9 @@ object Build extends sbt.Build {
       ) map (_ % "test"),
       compileOrder := CompileOrder.ScalaThenJava,
       jarName in assembly := "sdfs.jar",
-      assembleArtifact in packageScala := false
+      assembleArtifact in packageScala := false,
+      findbugsReportType := ReportType.Html,
+      findbugsReportName := "findbugs.html"
     )
   )
 

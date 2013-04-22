@@ -1,11 +1,11 @@
 package sdfs;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -22,13 +22,7 @@ import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.util.List;
 
 public class Console {
@@ -96,10 +90,7 @@ public class Console {
 
         try {
 
-            str.append(
-                CharStreams.toString(new InputStreamReader(
-                    Resources.getResource("help.txt").openStream())
-                )
+            str.append(Resources.toString(Resources.getResource("help.txt"), Charsets.UTF_8)
             ).append("\n");
 
         } catch (IOException e) {
@@ -205,7 +196,7 @@ public class Console {
                 try {
                     int port = getPort();
                     System.out.println("Starting server on port " + port + "...");
-                    server = new Server(port, new SslContextFactory(config), serverStore);
+                    server = new Server(port, new SslContextFactory(config).newContext(), serverStore);
                     server.start();
                     System.out.println("Server started on port " + port + ".");
                 } catch (Exception e) {
@@ -252,20 +243,6 @@ public class Console {
             }
         }
 
-    }
-
-    KeyStore caCertsKeyStore() {
-        Config keyStoreConfig = config.getConfig("sdfs.ca-certs-keystore");
-        File file = new File(keyStoreConfig.getString("path"));
-        char[] password = keyStoreConfig.getString("password").toCharArray();
-        try (FileInputStream in = new FileInputStream(file)) {
-            KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(in, password);
-            return keyStore;
-        } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException e) {
-            log.error("", e);
-            throw new RuntimeException(e);
-        }
     }
 
     int getPort() {
