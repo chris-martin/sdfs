@@ -6,7 +6,6 @@ import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.MockFilesystem;
-import sdfs.store.StoreImpl;
 
 public class StoreTest {
 
@@ -29,7 +28,7 @@ public class StoreTest {
 
         Assert.assertEquals(
             true,
-            store.hasAccess(alice, apple, StoreImpl.AccessType.Put)
+            store.hasAccess(alice, apple, AccessType.Put)
         );
 
     }}; }
@@ -40,7 +39,7 @@ public class StoreTest {
 
         Assert.assertEquals(
             false,
-            store.hasAccess(bob, apple, StoreImpl.AccessType.Get)
+            store.hasAccess(bob, apple, AccessType.Get)
         );
 
     }}; }
@@ -48,11 +47,11 @@ public class StoreTest {
     @Test public void bobCanGetAfterAliceGrantsGet() throws Exception { new Fixture() {{
 
         store.grantOwner(alice, apple);
-        store.delegate(alice, bob, apple, StoreImpl.Right.Get, new Instant(10));
+        store.delegate(alice, bob, apple, Right.Get, new Instant(10));
 
         Assert.assertEquals(
             true,
-            store.hasAccess(bob, apple, StoreImpl.AccessType.Get)
+            store.hasAccess(bob, apple, AccessType.Get)
         );
 
     }}; }
@@ -60,11 +59,11 @@ public class StoreTest {
     @Test public void bobCannotPutAfterAliceGrantsGet() throws Exception { new Fixture() {{
 
         store.grantOwner(alice, apple);
-        store.delegate(alice, bob, apple, StoreImpl.Right.Get, new Instant(10));
+        store.delegate(alice, bob, apple, Right.Get, new Instant(10));
 
         Assert.assertEquals(
             false,
-            store.hasAccess(bob, apple, StoreImpl.AccessType.Put)
+            store.hasAccess(bob, apple, AccessType.Put)
         );
 
     }}; }
@@ -72,13 +71,13 @@ public class StoreTest {
     @Test public void getGrantExpires() throws Exception { new Fixture() {{
 
         store.grantOwner(alice, apple);
-        store.delegate(alice, bob, apple, StoreImpl.Right.Get, new Instant(10));
+        store.delegate(alice, bob, apple, Right.Get, new Instant(10));
 
         chronos.now = new Instant(11);
 
         Assert.assertEquals(
             false,
-            store.hasAccess(bob, apple, StoreImpl.AccessType.Get)
+            store.hasAccess(bob, apple, AccessType.Get)
         );
 
     }}; }
