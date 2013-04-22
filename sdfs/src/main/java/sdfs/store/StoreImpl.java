@@ -1,20 +1,21 @@
-package sdfs;
+package sdfs.store;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigValueFactory;
 import org.joda.time.Instant;
+import sdfs.*;
 
 import java.io.File;
 import java.nio.file.Path;
 
-public class Store {
+public class StoreImpl {
 
     private final Chronos chronos;
     private final Filesystem filesystem;
 
-    public Store(
+    public StoreImpl(
         Chronos chronos,
         Filesystem filesystem
     ) {
@@ -22,8 +23,8 @@ public class Store {
         this.filesystem = filesystem;
     }
 
-    public Store fromConfig(Config config, String storeId) {
-        return new Store(
+    public StoreImpl fromConfig(Config config, String storeId) {
+        return new StoreImpl(
             new ChronosImpl(),
             new FilesystemImpl(
                 new File(config.getConfig("sdfs.store").getString(storeId)).toPath()
