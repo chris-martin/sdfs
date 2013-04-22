@@ -1,4 +1,4 @@
-package sdfs;
+package sdfs.time;
 
 import org.joda.time.Instant;
 

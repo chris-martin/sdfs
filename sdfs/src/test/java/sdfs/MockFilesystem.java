@@ -1,5 +1,7 @@
 package sdfs;
 
+import sdfs.filesystem.Filesystem;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package sdfs;
+package sdfs.filesystem;
 
 import java.nio.file.Path;
 
