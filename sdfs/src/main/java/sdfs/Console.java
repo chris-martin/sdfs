@@ -205,7 +205,7 @@ public class Console {
                 try {
                     int port = getPort();
                     System.out.println("Starting server on port " + port + "...");
-                    server = new Server(port, new SslContextFactory(config), serverStore);
+                    server = new Server(port, new SslContextFactory(config).newContext(), serverStore);
                     server.start();
                     System.out.println("Server started on port " + port + ".");
                 } catch (Exception e) {
