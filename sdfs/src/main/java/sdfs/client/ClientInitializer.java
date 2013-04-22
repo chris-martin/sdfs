@@ -6,6 +6,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.codec.compression.SnappyFramedDecoder;
+import io.netty.handler.codec.compression.SnappyFramedEncoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.ssl.SslHandler;
@@ -40,8 +42,8 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
         engine.setUseClientMode(true);
 
         pipeline.addLast(new SslHandler(engine));
-//        pipeline.addLast(new SnappyFramedDecoder());
-//        pipeline.addLast(new SnappyFramedEncoder());
+        pipeline.addLast(new SnappyFramedDecoder());
+        pipeline.addLast(new SnappyFramedEncoder());
         pipeline.addLast(new ChunkedWriteHandler());
         pipeline.addLast("framer",
                 new DelimiterBasedFrameDecoder(protocol.maxHeaderLength(), protocol.headerDelimiter()));
