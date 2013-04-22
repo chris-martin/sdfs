@@ -11,19 +11,22 @@ public class ProtectedKeyStore {
     public final KeyStore keyStore;
     public final char[] password;
 
+    public ProtectedKeyStore(char[] password) {
+        this(emptyKeyStore(), password);
+    }
+
     public ProtectedKeyStore(KeyStore keyStore, char[] password) {
         this.keyStore = keyStore;
         this.password = password;
     }
 
-    public static ProtectedKeyStore createEmpty() {
+    private static KeyStore emptyKeyStore() {
         try {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            char[] password = "changeit".toCharArray();
-            keyStore.load(null, password);
-            return new ProtectedKeyStore(keyStore, password);
+            keyStore.load(null, null);
+            return keyStore;
         } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 

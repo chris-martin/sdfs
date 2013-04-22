@@ -15,6 +15,3 @@ Commands:
     server stop         Halt the SDFS server
 
     set <key> <value>   Assign the config property sdfs.<key> = <value>
-
-    cert                Print a summary of certs
-    cert load           Reload certs from the filesystem

@@ -1,36 +1,50 @@
 package sdfs.ssl;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import java.security.*;
+import com.typesafe.config.Config;
+
+import javax.net.ssl.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.security.KeyStore;
 
 public class SslContextFactory {
 
-    private final String protocol = "TLS";
+    private final Config config;
 
-    private final ProtectedKeyStore keyStore;
-    private final KeyStore trustManagerKeyStore;
-
-    public SslContextFactory(ProtectedKeyStore keyStore, KeyStore trustManagerKeyStore) {
-        this.keyStore = keyStore;
-        this.trustManagerKeyStore = trustManagerKeyStore;
+    public SslContextFactory(Config config) {
+        this.config = config;
     }
 
     public SSLContext newContext() {
         try {
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(keyStore.keyStore, keyStore.password);
-
-            TrustManagerFactory trustManagerFactory =
-                    TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            trustManagerFactory.init(trustManagerKeyStore);
-
-            SSLContext context = SSLContext.getInstance(protocol);
-            context.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+            SSLContext context = SSLContext.getInstance(config.getString("sdfs.protocol"));
+            context.init(keyManagers(), trustManagers(), null);
             return context;
-        } catch (NoSuchAlgorithmException | KeyManagementException | UnrecoverableKeyException | KeyStoreException e) {
-            throw new RuntimeException(e.getMessage(), e); // TODO
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
+
+    KeyManager[] keyManagers() throws Exception {
+        KeyStore store = KeyStore.getInstance("JKS");
+        store.load(
+            new FileInputStream(new File(config.getString("sdfs.keystore.personal.file"))),
+            config.getString("sdfs.keystore.personal.store-password").toCharArray()
+        );
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        keyManagerFactory.init(store, config.getString("sdfs.keystore.personal.key-password").toCharArray());
+        return keyManagerFactory.getKeyManagers();
+    }
+
+    TrustManager[] trustManagers() throws Exception {
+        KeyStore store = KeyStore.getInstance("JKS");
+        store.load(
+            new FileInputStream(new File(config.getString("sdfs.keystore.ca.file"))),
+            config.getString("sdfs.keystore.ca.store-password").toCharArray()
+        );
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(store);
+        return trustManagerFactory.getTrustManagers();
+    }
+
 }
