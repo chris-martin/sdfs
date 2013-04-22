@@ -10,18 +10,19 @@ STOREPASS=changeit
 ALIAS=$1
 KEYPASS=keypass
 
+CA_STOREPASS=changeit
 CA_KEYPASS=keypass
 
 PKCS12_STOREPASS=changeit
 
 # Generate key pair and store it in $KEYSTORE at alias $ALIAS
 keytool -keystore $KEYSTORE -storepass $STOREPASS \
-        -genkeypair -alias $ALIAS -keyalg RSA -dname CN=$1 -keypass keypass
+        -genkeypair -alias $ALIAS -keyalg RSA -dname CN=$1 -keypass "$KEYPASS"
 
 # Generate a CSR and use it to generate a cert ($1.pem) signed by CA
 keytool -keystore $KEYSTORE -storepass $STOREPASS \
         -certreq -alias $ALIAS -keypass "$KEYPASS" | \
-keytool -keystore ca.jks -storetype JKS -storepass storepass \
+keytool -keystore ca.jks -storetype JKS -storepass "$CA_STOREPASS" \
         -gencert -alias ca -keypass "$CA_KEYPASS" -rfc > $1.pem
 
 # Import the CA cert into $KEYSTORE so that we can import the CSR reply
