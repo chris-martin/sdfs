@@ -4,7 +4,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import sdfs.ssl.ProtectedKeyStore;
+import sdfs.ssl.SslContextFactory;
 import sdfs.store.Store;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -15,7 +15,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class Server {
 
     private final int port;
-    private final ProtectedKeyStore keyStore;
+    private final SslContextFactory sslContextFactory;
     private final Store store;
 
     private EventLoopGroup bossGroup;
@@ -25,14 +25,9 @@ public class Server {
 
     private boolean started;
 
-    /**
-     * @param port port to bind to
-     * @param keyStore key store with the server and CA certs
-     * @param store file store
-     */
-    public Server(int port, ProtectedKeyStore keyStore, Store store) {
+    public Server(int port, SslContextFactory sslContextFactory, Store store) {
         this.port = port;
-        this.keyStore = keyStore;
+        this.sslContextFactory = sslContextFactory;
         this.store = store;
     }
 
@@ -71,7 +66,7 @@ public class Server {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(keyStore, store));
+                    .childHandler(new ServerInitializer(sslContextFactory.newContext(), store));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
         } catch (InterruptedException ignored) {

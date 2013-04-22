@@ -10,10 +10,13 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
 import sdfs.ssl.ProtectedKeyStore;
+import sdfs.ssl.SslContextFactory;
 import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
@@ -23,11 +26,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
 public class Console {
+
+    private static final Logger log = LoggerFactory.getLogger(Console.class);
 
     Config config = ConfigFactory.empty();
     ConsoleReader console;
@@ -221,7 +228,7 @@ public class Console {
                 try {
                     int port = getPort();
                     System.out.println("Starting server on port " + port + "...");
-                    server = new Server(port, keyStore("server"), serverStore);
+                    server = new Server(port, sslContextFactory("server"), serverStore);
                     server.start();
                     System.out.println("Server started on port " + port + ".");
                 } catch (Exception e) {
@@ -248,7 +255,7 @@ public class Console {
                     String host = tail.size() < 1 ? "localhost" : tail.get(0);
                     Integer port = getPort();
                     System.out.println("Connecting to " + host + ":" + port + "...");
-                    client = new Client(host, port, keyStore("client"), clientStore);
+                    client = new Client(host, port, sslContextFactory("client"), clientStore);
                     client.connect();
                     System.out.println("Connected to " + host + ":" + port + ".");
                 } catch (Exception e) {
@@ -270,27 +277,43 @@ public class Console {
 
     }
 
+    SslContextFactory sslContextFactory(String identity) {
+        return new SslContextFactory(keyStore(identity), caCertsKeyStore());
+    }
+
+    KeyStore caCertsKeyStore() {
+        Config keyStoreConfig = config.getConfig("sdfs.ca-certs-keystore");
+        File file = new File(keyStoreConfig.getString("path"));
+        char[] password = keyStoreConfig.getString("password").toCharArray();
+        try (FileInputStream in = new FileInputStream(file)) {
+            KeyStore keyStore = KeyStore.getInstance("JKS");
+            keyStore.load(in, password);
+            return keyStore;
+        } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException e) {
+            log.error("", e);
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
     ProtectedKeyStore keyStore(String identity) {
         if (true) {
             CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
             try {
-                File keystoreFile = new File(config.getString("sdfs.cert-path"), cn.name + ".jks");
+                File keystoreFile = new File(config.getString("sdfs.cert-path"), cn.name + ".p12");
                 char[] keystorePassword = "storepass".toCharArray(); // TODO
-                KeyStore keyStore = KeyStore.getInstance("JKS");
+                KeyStore keyStore = KeyStore.getInstance("PKCS12");
                 try (FileInputStream in = new FileInputStream(keystoreFile)) {
                     keyStore.load(in, keystorePassword);
                 }
                 return new ProtectedKeyStore(keyStore, "keypass".toCharArray()); // TODO
             } catch (Exception e) {
+                log.error("", e);
                 throw new RuntimeException(e.getMessage(), e);
             }
         }
         // TODO
         try {
-            ProtectedKeyStore protectedKeyStore;
-            try (FileInputStream in = new FileInputStream(config.getString("sdfs.prototype-keystore-path"))) {
-                protectedKeyStore = ProtectedKeyStore.createEmpty(in, "storepass".toCharArray()); // TODO
-            }
+            ProtectedKeyStore protectedKeyStore = ProtectedKeyStore.createEmpty(); // TODO
             CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
             CertCollection.Cert cert = certs.byCN.get(cn);
             if (cert == null) {
@@ -300,7 +323,7 @@ public class Console {
             protectedKeyStore.keyStore.setCertificateEntry(identity, x509);
             protectedKeyStore.keyStore.setKeyEntry(identity, cert.key.getEncoded(), new Certificate[]{x509});
             return protectedKeyStore;
-        } catch (KeyStoreException | IOException e) {
+        } catch (KeyStoreException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }
