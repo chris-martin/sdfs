@@ -10,9 +10,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.stream.ChunkedStream;
 import sdfs.protocol.Protocol;
-import sdfs.ssl.ProtectedKeyStore;
 import sdfs.store.Store;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.ConnectException;
 
@@ -22,7 +22,7 @@ public class Client {
 
     private final String host;
     private final int port;
-    private final ProtectedKeyStore keyStore;
+    private final SSLContext sslContext;
 
     private final Store store;
 
@@ -31,10 +31,10 @@ public class Client {
     private EventLoopGroup group;
     private Channel channel;
 
-    public Client(String host, int port, ProtectedKeyStore keyStore, Store store) {
+    public Client(String host, int port, SSLContext sslContext, Store store) {
         this.host = host;
         this.port = port;
-        this.keyStore = keyStore;
+        this.sslContext = sslContext;
         this.store = store;
     }
 
@@ -47,7 +47,7 @@ public class Client {
             Bootstrap bootstrap = new Bootstrap()
                     .group(group)
                     .channel(NioSocketChannel.class)
-                    .handler(new ClientInitializer(keyStore, store));
+                    .handler(new ClientInitializer(sslContext, store));
 
             channel = bootstrap.connect(host, port).sync().channel();
         } catch (InterruptedException ignored) {

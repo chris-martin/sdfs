@@ -2,6 +2,7 @@ package sdfs;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
@@ -13,18 +14,12 @@ import com.typesafe.config.ConfigRenderOptions;
 import scala.tools.jline.console.ConsoleReader;
 import sdfs.client.Client;
 import sdfs.server.Server;
-import sdfs.ssl.ProtectedKeyStore;
 import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
 import java.util.List;
 
 public class Console {
@@ -35,7 +30,7 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
-    CertCollection certs;
+    IdentityCollection identityCollection;
     Store serverStore;
     Store clientStore;
     boolean halt;
@@ -44,7 +39,7 @@ public class Console {
         try {
             console = new ConsoleReader();
         } catch (IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException(Throwables.getStackTraceAsString(e), e);
         }
         shutdownHook = new Thread(new Runnable() {
             public void run() {
@@ -144,7 +139,7 @@ public class Console {
 
         StringBuilder str = new StringBuilder();
 
-        String c = certs == null ? "" : certs.toString();
+        String c = identityCollection == null ? "" : identityCollection.toString();
 
         str.append("\nCertificates:\n\n").append(
             c.replaceAll("(.+)\n", "    $1\n")
@@ -221,7 +216,7 @@ public class Console {
                 try {
                     int port = getPort();
                     System.out.println("Starting server on port " + port + "...");
-                    server = new Server(port, keyStore("server"), serverStore);
+                    server = new Server(port, new SSLConfigurator(config, identityCollection).sslContext("server"), serverStore);
                     server.start();
                     System.out.println("Server started on port " + port + ".");
                 } catch (Exception e) {
@@ -248,7 +243,7 @@ public class Console {
                     String host = tail.size() < 1 ? "localhost" : tail.get(0);
                     Integer port = getPort();
                     System.out.println("Connecting to " + host + ":" + port + "...");
-                    client = new Client(host, port, keyStore("client"), clientStore);
+                    client = new Client(host, port, new SSLConfigurator(config, identityCollection).sslContext("client"), clientStore);
                     client.connect();
                     System.out.println("Connected to " + host + ":" + port + ".");
                 } catch (Exception e) {
@@ -270,41 +265,6 @@ public class Console {
 
     }
 
-    ProtectedKeyStore keyStore(String identity) {
-        if (true) {
-            CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
-            try {
-                File keystoreFile = new File(config.getString("sdfs.cert-path"), cn.name + ".jks");
-                char[] keystorePassword = "storepass".toCharArray(); // TODO
-                KeyStore keyStore = KeyStore.getInstance("JKS");
-                try (FileInputStream in = new FileInputStream(keystoreFile)) {
-                    keyStore.load(in, keystorePassword);
-                }
-                return new ProtectedKeyStore(keyStore, "keypass".toCharArray()); // TODO
-            } catch (Exception e) {
-                throw new RuntimeException(e.getMessage(), e);
-            }
-        }
-        // TODO
-        try {
-            ProtectedKeyStore protectedKeyStore;
-            try (FileInputStream in = new FileInputStream(config.getString("sdfs.prototype-keystore-path"))) {
-                protectedKeyStore = ProtectedKeyStore.createEmpty(in, "storepass".toCharArray()); // TODO
-            }
-            CN cn = new CN(config.getConfig("sdfs.identity").getString(identity));
-            CertCollection.Cert cert = certs.byCN.get(cn);
-            if (cert == null) {
-                throw new RuntimeException("No such cert: " + cn);
-            }
-            X509Certificate x509 = cert.x509;
-            protectedKeyStore.keyStore.setCertificateEntry(identity, x509);
-            protectedKeyStore.keyStore.setKeyEntry(identity, cert.key.getEncoded(), new Certificate[]{x509});
-            return protectedKeyStore;
-        } catch (KeyStoreException | IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
-
     int getPort() {
         try {
             return config.getInt("sdfs.port");
@@ -316,8 +276,11 @@ public class Console {
     }
 
     void loadCerts() {
-        certs = new CertCollection();
-        certs.load(new File(config.getString("sdfs.cert-path")));
+        identityCollection = new IdentityCollection();
+        identityCollection.load(
+            new File(config.getString("sdfs.cert-path")),
+            config.getConfig("sdfs.password")
+        );
     }
 
     void initStores() {

@@ -8,8 +8,6 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sdfs.ssl.ProtectedKeyStore;
-import sdfs.ssl.SslContextFactory;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLContext;
@@ -22,8 +20,8 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
     private final SSLContext sslContext;
     private final Store store;
 
-    public ClientInitializer(ProtectedKeyStore keyStore, Store store) {
-        sslContext = new SslContextFactory().newContext(keyStore);
+    public ClientInitializer(SSLContext sslContext, Store store) {
+        this.sslContext = sslContext;
         this.store = store;
     }
 
