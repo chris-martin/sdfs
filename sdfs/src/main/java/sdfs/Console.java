@@ -22,13 +22,8 @@ import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.util.List;
 
 public class Console {
@@ -252,20 +247,6 @@ public class Console {
             }
         }
 
-    }
-
-    KeyStore caCertsKeyStore() {
-        Config keyStoreConfig = config.getConfig("sdfs.ca-certs-keystore");
-        File file = new File(keyStoreConfig.getString("path"));
-        char[] password = keyStoreConfig.getString("password").toCharArray();
-        try (FileInputStream in = new FileInputStream(file)) {
-            KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(in, password);
-            return keyStore;
-        } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException e) {
-            log.error("", e);
-            throw new RuntimeException(e);
-        }
     }
 
     int getPort() {
