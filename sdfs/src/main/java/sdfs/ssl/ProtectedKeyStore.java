@@ -5,6 +5,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Arrays;
 
 public class ProtectedKeyStore {
 
@@ -17,7 +18,7 @@ public class ProtectedKeyStore {
 
     public ProtectedKeyStore(KeyStore keyStore, char[] password) {
         this.keyStore = keyStore;
-        this.password = password;
+        this.password = Arrays.copyOf(password, password.length);
     }
 
     private static KeyStore emptyKeyStore() {
