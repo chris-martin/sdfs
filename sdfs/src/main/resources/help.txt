@@ -9,7 +9,12 @@ Commands:
 
     quit, q             Halt and exit the SDFS console
 
-    connect, c          Start a client connection to an SDFS server
+    client, c           Start a client connection to an SDFS server
+    client stop         End client connection
+
+    get <filename>      Gets file <filename> from server
+    put <filename>      Sends file <filename> to server
+    delegate[*] <filename> <client> <duration> [get] [put]
 
     server, s           Start the SDFS server
     server stop         Halt the SDFS server

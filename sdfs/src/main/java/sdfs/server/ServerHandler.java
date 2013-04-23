@@ -5,23 +5,28 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashCodes;
 import com.google.common.io.ByteSource;
-import com.google.common.io.CountingOutputStream;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedStream;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
 import sdfs.protocol.InboundFile;
 import sdfs.protocol.InboundFileHandler;
 import sdfs.protocol.Protocol;
+import sdfs.protocol.ProtocolException;
+import sdfs.server.policy.AccessType;
+import sdfs.server.policy.IPolicy;
+import sdfs.server.policy.Right;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLSession;
 import java.io.InputStream;
+import java.util.Iterator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -32,6 +37,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
     private final Protocol protocol = new Protocol();
     private final Store store;
+    private final IPolicy policy = new GrantAllPolicy(); // TODO
 
     private CN client;
 
@@ -58,41 +64,74 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
     @Override
     public void messageReceived(ChannelHandlerContext ctx, String msg) throws Exception {
-        List<String> headers = protocol.decodeHeaders(msg);
-        log.info("received headers\n{}", Joiner.on('\n').join(headers));
+        List<String> headersList = protocol.decodeHeaders(msg);
+        log.info("received headers\n{}", Joiner.on('\n').join(headersList));
 
-        String cmd = headers.get(0);
-        List<String> args = headers.size() > 1 ? headers.subList(1, headers.size()) : ImmutableList.<String>of();
+        Iterator<String> headers = headersList.iterator();
+
+        String correlationId = headers.next();
+        String cmd = headers.next();
 
         if (cmd.equals(protocol.bye())) {
             ctx.close();
         } else if (cmd.equals(protocol.put())) {
-            String filename = args.get(0);
-            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(args.get(1)));
-            long size = Long.parseLong(args.get(2));
+            String filename = headers.next();
+
+            if (!policy.hasAccess(client, filename, AccessType.Put)) {
+                ctx.write(protocol.encodeHeaders(ImmutableList.of(
+                        correlationId,
+                        protocol.prohibited()
+                )));
+                return;
+            }
+
+            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(headers.next()));
+            long size = Long.parseLong(headers.next());
 
             log.info("Receiving file `{}' ({} bytes) from {}", filename, size, client);
+
+            policy.grantOwner(client, filename);
 
             InboundFile inboundFile =
                     new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
-
-            // TODO update policy to set client as owner
         } else if (cmd.equals(protocol.get())) {
-            String filename = args.get(0);
+            String filename = headers.next();
+
+            if (!policy.hasAccess(client, filename, AccessType.Get)) {
+                ctx.write(protocol.encodeHeaders(ImmutableList.of(
+                        correlationId,
+                        protocol.prohibited()
+                )));
+                return;
+            }
+
             ByteSource file = store.get(filename);
             HashCode hash = file.hash(protocol.fileHashFunction());
 
             log.info("Sending file `{}' ({} bytes) to {}", filename, file.size(), client);
 
             ctx.write(protocol.encodeHeaders(ImmutableList.of(
-                    "put",
+                    correlationId,
+                    protocol.put(),
                     filename,
                     protocol.hashEncoding().encode(hash.asBytes()),
                     String.valueOf(file.size())
             )));
-            InputStream getSrc = file.openStream();
-            ctx.write(new ChunkedStream(getSrc));
+            InputStream src = file.openStream();
+            ctx.write(new ChunkedStream(src));
+        } else if (cmd.equals(protocol.delegate())) {
+            String filename = headers.next();
+            CN delegateClient = new CN(headers.next());
+            Right right = protocol.decodeRight(headers.next());
+            Instant expiration = new Instant(Long.parseLong(headers.next()));
+
+            log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
+                    right, filename, client, delegateClient, expiration.toString());
+
+            policy.delegate(client, delegateClient, filename, right, expiration);
+        } else {
+            throw new ProtocolException("Invalid command: " + cmd);
         }
     }
 
@@ -104,5 +143,24 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
             log.error("", e);
         }
         ctx.close();
+    }
+
+    private static class GrantAllPolicy implements IPolicy {
+
+        @Override
+        public boolean hasAccess(CN cn, String resourceName, AccessType accessType) {
+            log.debug("hasAccess {} {} {}", cn, resourceName, accessType);
+            return false;
+        }
+
+        @Override
+        public void grantOwner(CN cn, String resourceName) {
+            log.debug("grantOwner {} {}", cn, resourceName);
+        }
+
+        @Override
+        public void delegate(CN from, CN to, String resourceName, Right right, Instant expiration) {
+            log.debug("delegate {} {} {} {} {}", from, to, resourceName, right, expiration);
+        }
     }
 }

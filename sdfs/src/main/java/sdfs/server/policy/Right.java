@@ -18,6 +18,11 @@ public class Right {
         return new Right(accessType, DelegationType.Star);
     }
 
+    @Override
+    public String toString() {
+        return marshal();
+    }
+
     public static final Right Get = new Right(AccessType.Get, DelegationType.None);
     public static final Right Put = new Right(AccessType.Put, DelegationType.None);
     public static final Right GetStar = new Right(AccessType.Get, DelegationType.Star);

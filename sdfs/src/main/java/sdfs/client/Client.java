@@ -3,8 +3,6 @@ package sdfs.client;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import com.google.common.io.ByteSource;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -12,7 +10,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.stream.ChunkedStream;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
+import sdfs.CN;
 import sdfs.protocol.Protocol;
+import sdfs.server.policy.Right;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.Store;
 
@@ -62,16 +64,21 @@ public class Client {
         }
     }
 
-    public synchronized void get(String filename) {
-        channel.write(protocol.encodeHeaders(ImmutableList.of("get", filename)));
+    public void get(String filename) {
+        channel.write(protocol.encodeHeaders(ImmutableList.of(
+                protocol.correlationId(),
+                protocol.get(),
+                filename
+        )));
     }
 
-    public synchronized void put(String filename) {
+    public void put(String filename) {
         ByteSource file = store.get(filename);
         try {
             HashCode hash = file.hash(protocol.fileHashFunction());
             channel.write(protocol.encodeHeaders(ImmutableList.of(
-                    "put",
+                    protocol.correlationId(),
+                    protocol.put(),
                     filename,
                     protocol.hashEncoding().encode(hash.asBytes()),
                     String.valueOf(file.size())
@@ -82,12 +89,26 @@ public class Client {
         }
     }
 
+    public void delegate(CN to, String filename, Right right, Duration duration) {
+        channel.write(protocol.encodeHeaders(ImmutableList.of(
+                protocol.correlationId(),
+                protocol.delegate(),
+                filename,
+                to.name,
+                protocol.encodeRight(right),
+                String.valueOf(Instant.now().plus(duration).getMillis()) // TODO use Chronos
+        )));
+    }
+
     public synchronized void disconnect() {
         if (group == null) return;
 
         if (channel != null) {
             try {
-                channel.write(protocol.encodeHeaders(ImmutableList.of(protocol.bye()))).sync();
+                channel.write(protocol.encodeHeaders(ImmutableList.of(
+                        protocol.correlationId(),
+                        protocol.bye()
+                ))).sync();
                 channel.closeFuture().sync();
             } catch (InterruptedException ignored) {
             }

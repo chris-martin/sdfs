@@ -3,16 +3,19 @@ package sdfs.protocol;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
-import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import sdfs.server.policy.AccessType;
+import sdfs.server.policy.DelegationType;
+import sdfs.server.policy.Right;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 public class Protocol {
 
@@ -45,6 +48,10 @@ public class Protocol {
         return StandardCharsets.UTF_8;
     }
 
+    public String correlationId() {
+        return UUID.randomUUID().toString();
+    }
+
     public String bye() {
         return "bye";
     }
@@ -61,8 +68,47 @@ public class Protocol {
         return "delegate";
     }
 
-    public String delegateStar() {
-        return "delegate*";
+    public String prohibited() {
+        return "prohibited";
+    }
+
+    public String encodeRight(Right right) {
+        StringBuilder s = new StringBuilder();
+        s.append(encodeAccessType(right.accessType));
+        if (right.delegationType == DelegationType.Star) {
+            s.append("*");
+        }
+        return s.toString();
+    }
+
+    private String encodeAccessType(AccessType accessType) {
+        switch (accessType) {
+            case Get: return get();
+            case Put: return put();
+        }
+        throw new ProtocolException("Invalid access type: " + accessType);
+    }
+
+    private String star() {
+        return "*";
+    }
+
+    public Right decodeRight(String s) {
+        DelegationType delegationType = DelegationType.None;
+        if (s.endsWith(star())) {
+            delegationType = DelegationType.Star;
+            s = s.substring(0, s.length() - star().length());
+        }
+        return new Right(decodeAccessType(s), delegationType);
+    }
+
+    private AccessType decodeAccessType(String accessType) {
+        if (get().equals(accessType)) {
+            return AccessType.Get;
+        } else if (put().equals(accessType)) {
+            return AccessType.Put;
+        }
+        throw new ProtocolException("Invalid access type: " + accessType);
     }
 
     public HashFunction fileHashFunction() {

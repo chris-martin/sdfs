@@ -6,17 +6,22 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.tools.jline.console.ConsoleReader;
 import scala.tools.jline.console.history.FileHistory;
 import sdfs.client.Client;
 import sdfs.server.Server;
+import sdfs.server.policy.AccessType;
+import sdfs.server.policy.DelegationType;
+import sdfs.server.policy.Right;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.SimpleStore;
 import sdfs.store.Store;
@@ -240,6 +245,30 @@ public class Console {
                 String filename = tail.get(0);
                 System.out.println("Putting file " + filename);
                 client.put(filename);
+            } else if (head.startsWith("delegate") && tail.size() >= 3) {
+                DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
+
+                String filename = tail.get(0);
+                CN delegateClient = new CN(tail.get(1));
+                Duration duration = new Duration(Long.parseLong(tail.get(2)));// Duration.parse(tail.get(2));
+
+                List<AccessType> accessTypes;
+                if (tail.size() < 4) {
+                    accessTypes = ImmutableList.copyOf(AccessType.values());
+                } else {
+                    accessTypes = Lists.newArrayList();
+                    if (tail.contains("get")) {
+                        accessTypes.add(AccessType.Get);
+                    }
+                    if (tail.contains("put")) {
+                        accessTypes.add(AccessType.Put);
+                    }
+                }
+                // TODO combine into one call
+                for (AccessType accessType : accessTypes) {
+                    Right right = new Right(accessType, delegationType);
+                    client.delegate(delegateClient, filename, right, duration);
+                }
             }
         }
 
