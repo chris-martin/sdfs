@@ -20,7 +20,7 @@ import sdfs.protocol.InboundFileHandler;
 import sdfs.protocol.Protocol;
 import sdfs.protocol.ProtocolException;
 import sdfs.server.policy.AccessType;
-import sdfs.server.policy.IPolicy;
+import sdfs.server.policy.PolicyStore;
 import sdfs.server.policy.Right;
 import sdfs.store.Store;
 
@@ -37,7 +37,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
     private final Protocol protocol = new Protocol();
     private final Store store;
-    private final IPolicy policy = new GrantAllPolicy(); // TODO
+    private final PolicyStore policy = new GrantAllPolicyStore(); // TODO
 
     private CN client;
 
@@ -145,7 +145,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
         ctx.close();
     }
 
-    private static class GrantAllPolicy implements IPolicy {
+    private static class GrantAllPolicyStore implements PolicyStore {
 
         @Override
         public boolean hasAccess(CN cn, String resourceName, AccessType accessType) {

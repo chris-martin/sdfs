@@ -6,17 +6,14 @@ import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.MockFilesystem;
-import sdfs.server.policy.AccessType;
-import sdfs.server.policy.PolicyStore;
-import sdfs.server.policy.Right;
 
-public class PolicyStoreTest {
+public class PolicyStoreImplTest {
 
     static class Fixture {
 
         MockFilesystem filesystem = new MockFilesystem();
         MockChronos chronos = new MockChronos();
-        PolicyStore store = new PolicyStore(chronos, filesystem);
+        PolicyStoreImpl store = new PolicyStoreImpl(chronos, filesystem);
 
         CN alice = new CN("alice");
         CN bob = new CN("bob");
