@@ -1,4 +1,4 @@
-package sdfs;
+package sdfs.rights;
 
 public class AccessControlException extends RuntimeException {
 

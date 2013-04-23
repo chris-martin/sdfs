@@ -14,7 +14,7 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 import sdfs.CN;
 import sdfs.protocol.Protocol;
-import sdfs.server.policy.Right;
+import sdfs.rights.Right;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.Store;
 

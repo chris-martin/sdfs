@@ -8,9 +8,9 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import sdfs.server.policy.AccessType;
-import sdfs.server.policy.DelegationType;
-import sdfs.server.policy.Right;
+import sdfs.rights.AccessType;
+import sdfs.rights.DelegationType;
+import sdfs.rights.Right;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

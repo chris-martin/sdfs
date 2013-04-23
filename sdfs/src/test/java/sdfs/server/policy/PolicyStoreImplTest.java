@@ -6,6 +6,8 @@ import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.MockFilesystem;
+import sdfs.rights.AccessType;
+import sdfs.rights.Right;
 
 public class PolicyStoreImplTest {
 

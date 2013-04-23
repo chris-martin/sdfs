@@ -19,9 +19,9 @@ import sdfs.protocol.InboundFile;
 import sdfs.protocol.InboundFileHandler;
 import sdfs.protocol.Protocol;
 import sdfs.protocol.ProtocolException;
-import sdfs.server.policy.AccessType;
+import sdfs.rights.AccessType;
 import sdfs.server.policy.PolicyStore;
-import sdfs.server.policy.Right;
+import sdfs.rights.Right;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLSession;

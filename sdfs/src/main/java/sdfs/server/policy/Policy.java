@@ -3,8 +3,9 @@ package sdfs.server.policy;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.joda.time.Instant;
-import sdfs.AccessControlException;
+import sdfs.rights.AccessControlException;
 import sdfs.CN;
+import sdfs.rights.Right;
 
 class Policy {
 

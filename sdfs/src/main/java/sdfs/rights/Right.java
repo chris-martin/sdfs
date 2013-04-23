@@ -1,4 +1,4 @@
-package sdfs.server.policy;
+package sdfs.rights;
 
 public class Right {
 
@@ -10,11 +10,11 @@ public class Right {
         this.delegationType = delegationType;
     }
 
-    String marshal() {
+    public String marshal() {
         return accessType.marshal() + "-" + delegationType.marshal();
     }
 
-    Right star() {
+    public Right star() {
         return new Right(accessType, DelegationType.Star);
     }
 

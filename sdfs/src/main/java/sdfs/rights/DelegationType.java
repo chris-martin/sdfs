@@ -1,4 +1,4 @@
-package sdfs.server.policy;
+package sdfs.rights;
 
 public enum DelegationType {
 
