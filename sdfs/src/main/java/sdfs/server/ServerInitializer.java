@@ -15,6 +15,7 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.protocol.Protocol;
+import sdfs.server.policy.PolicyStore;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLContext;
@@ -26,12 +27,14 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private final SSLContext sslContext;
     private final Store store;
+    private final PolicyStore policyStore;
 
     private final Protocol protocol = new Protocol();
 
-    public ServerInitializer(SSLContext sslContext, Store store) {
+    public ServerInitializer(SSLContext sslContext, Store store, PolicyStore policyStore) {
         this.sslContext = sslContext;
         this.store = store;
+        this.policyStore = policyStore;
     }
 
     @Override
@@ -51,7 +54,7 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
                 new DelimiterBasedFrameDecoder(protocol.maxHeaderLength(), protocol.headerDelimiter()));
         pipeline.addLast("decoder", new StringDecoder(protocol.headerCharset()));
         pipeline.addLast("encoder", new StringEncoder(BufType.BYTE, protocol.headerCharset()));
-        pipeline.addLast("server", new ServerHandler(store));
+        pipeline.addLast("server", new ServerHandler(store, policyStore));
     }
 
     @Override

@@ -40,7 +40,6 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
-    Store serverStore;
     Store clientStore;
     boolean halt;
 
@@ -199,11 +198,11 @@ public class Console {
                 System.out.println("Server already started.");
             } else {
                 try {
-                    int port = getPort();
-                    System.out.println("Starting server on port " + port + "...");
-                    server = new Server(port, new SslContextFactory(config).newContext(), serverStore);
+                    server = Server.fromConfig(config);
+                    System.out.println("Starting server on port " + server.port + "...");
                     server.start();
-                    System.out.println("Server started on port " + port + ".");
+                    System.out.println("Server started on port " + server.port + ".");
+
                 } catch (Exception e) {
                     System.out.println("Error: " + Throwables.getStackTraceAsString(e));
                     server = null;
@@ -226,7 +225,7 @@ public class Console {
             } else {
                 try {
                     String host = tail.size() < 1 ? "localhost" : tail.get(0);
-                    Integer port = getPort();
+                    Integer port = config.getInt("sdfs.port");
                     System.out.println("Connecting to " + host + ":" + port + "...");
                     client = new Client(host, port, new SslContextFactory(config), clientStore);
                     client.connect();
@@ -274,18 +273,7 @@ public class Console {
 
     }
 
-    int getPort() {
-        try {
-            return config.getInt("sdfs.port");
-        } catch (ConfigException.Missing e) {
-            throw new RuntimeException("Port is not specified.", e);
-        } catch (ConfigException.BadValue e) {
-            throw new RuntimeException("Port must be an integer.", e);
-        }
-    }
-
     void initStores() {
-        serverStore = new SimpleStore(new File(config.getString("sdfs.server-store-path")));
         clientStore = new SimpleStore(new File(config.getString("sdfs.client-store-path")));
     }
 

@@ -28,11 +28,11 @@ public class PolicyStoreImpl implements PolicyStore {
         this.filesystem = filesystem;
     }
 
-    public PolicyStoreImpl fromConfig(Config config, String storeId) {
+    public static PolicyStoreImpl fromConfig(Config config) {
         return new PolicyStoreImpl(
             new ChronosImpl(),
             new FilesystemImpl(
-                new File(config.getConfig("sdfs.store").getString(storeId)).toPath()
+                new File(config.getString("sdfs.store.server")).toPath()
             )
         );
     }

@@ -37,12 +37,13 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
     private final Protocol protocol = new Protocol();
     private final Store store;
-    private final PolicyStore policy = new GrantAllPolicyStore(); // TODO
+    private final PolicyStore policyStore;
 
     private CN client;
 
-    public ServerHandler(Store store) {
+    public ServerHandler(Store store, PolicyStore policyStore) {
         this.store = store;
+        this.policyStore = policyStore;
     }
 
     @Override
@@ -77,7 +78,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
         } else if (cmd.equals(protocol.put())) {
             String filename = headers.next();
 
-            if (!policy.hasAccess(client, filename, AccessType.Put)) {
+            if (!policyStore.hasAccess(client, filename, AccessType.Put)) {
                 ctx.write(protocol.encodeHeaders(ImmutableList.of(
                         correlationId,
                         protocol.prohibited()
@@ -90,7 +91,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
 
             log.info("Receiving file `{}' ({} bytes) from {}", filename, size, client);
 
-            policy.grantOwner(client, filename);
+            policyStore.grantOwner(client, filename);
 
             InboundFile inboundFile =
                     new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
@@ -98,7 +99,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
         } else if (cmd.equals(protocol.get())) {
             String filename = headers.next();
 
-            if (!policy.hasAccess(client, filename, AccessType.Get)) {
+            if (!policyStore.hasAccess(client, filename, AccessType.Get)) {
                 ctx.write(protocol.encodeHeaders(ImmutableList.of(
                         correlationId,
                         protocol.prohibited()
@@ -129,7 +130,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
             log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
                     right, filename, client, delegateClient, expiration.toString());
 
-            policy.delegate(client, delegateClient, filename, right, expiration);
+            policyStore.delegate(client, delegateClient, filename, right, expiration);
         } else {
             throw new ProtocolException("Invalid command: " + cmd);
         }
@@ -145,22 +146,4 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
         ctx.close();
     }
 
-    private static class GrantAllPolicyStore implements PolicyStore {
-
-        @Override
-        public boolean hasAccess(CN cn, String resourceName, AccessType accessType) {
-            log.debug("hasAccess {} {} {}", cn, resourceName, accessType);
-            return false;
-        }
-
-        @Override
-        public void grantOwner(CN cn, String resourceName) {
-            log.debug("grantOwner {} {}", cn, resourceName);
-        }
-
-        @Override
-        public void delegate(CN from, CN to, String resourceName, Right right, Instant expiration) {
-            log.debug("delegate {} {} {} {} {}", from, to, resourceName, right, expiration);
-        }
-    }
 }
