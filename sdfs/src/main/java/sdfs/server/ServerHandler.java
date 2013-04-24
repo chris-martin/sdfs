@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashCodes;
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -20,12 +21,13 @@ import sdfs.protocol.InboundFileHandler;
 import sdfs.protocol.Protocol;
 import sdfs.protocol.ProtocolException;
 import sdfs.rights.AccessType;
-import sdfs.server.policy.PolicyStore;
 import sdfs.rights.Right;
+import sdfs.server.policy.PolicyStore;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLSession;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.List;
 
@@ -78,23 +80,25 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
         } else if (cmd.equals(protocol.put())) {
             String filename = headers.next();
 
-            if (!policyStore.hasAccess(client, filename, AccessType.Put)) {
-                ctx.write(protocol.encodeHeaders(ImmutableList.of(
-                        correlationId,
-                        protocol.prohibited()
-                )));
-                return;
-            }
-
             HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(headers.next()));
             long size = Long.parseLong(headers.next());
 
             log.info("Receiving file `{}' ({} bytes) from {}", filename, size, client);
 
-            policyStore.grantOwner(client, filename);
+            OutputStream out;
+            if (!policyStore.hasAccess(client, filename, AccessType.Put)) {
+                out = ByteStreams.nullOutputStream(); // ignore the actual file contents
+                ctx.write(protocol.encodeHeaders(ImmutableList.of(
+                        correlationId,
+                        protocol.prohibited()
+                )));
+            } else {
+                policyStore.grantOwner(client, filename);
+                out = store.put(filename).openBufferedStream();
+            }
 
             InboundFile inboundFile =
-                    new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
+                    new InboundFile(out, hash, protocol.fileHashFunction(), size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
         } else if (cmd.equals(protocol.get())) {
             String filename = headers.next();
