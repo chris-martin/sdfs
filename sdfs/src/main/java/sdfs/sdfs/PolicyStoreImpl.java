@@ -35,20 +35,18 @@ class PolicyStoreImpl implements PolicyStore {
         );
     }
 
-    @Override
     public synchronized boolean hasAccess(CN cn, String resourceName, AccessType accessType) {
-        Policy policy = loadPolicy(resourceName);
-        return policy.principalRights(cn).mayDo(accessType, chronos.now());
+        return loadPolicy(resourceName).principalRights(cn).mayDo(accessType, chronos.now());
     }
 
-    @Override
+    public synchronized boolean isOwner(CN cn, String resourceName) {
+        return loadPolicy(resourceName).principalRights(cn).isOwner();
+    }
+
     public synchronized void grantOwner(CN cn, String resourceName) {
-        Policy policy = loadPolicy(resourceName);
-        policy = policy.grantOwner(cn);
-        savePolicy(resourceName, policy);
+        savePolicy(resourceName, loadPolicy(resourceName).grantOwner(cn));
     }
 
-    @Override
     public synchronized void delegate(CN from, CN to, String resourceName, Right right, Instant expiration) {
         Policy policy = loadPolicy(resourceName);
         policy = policy.delegate(from, to, right, expiration, chronos.now());
