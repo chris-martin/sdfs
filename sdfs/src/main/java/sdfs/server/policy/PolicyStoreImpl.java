@@ -5,8 +5,8 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.joda.time.Instant;
 import sdfs.CN;
-import sdfs.store.Filesystem;
-import sdfs.store.FilesystemImpl;
+import sdfs.store.StringStore;
+import sdfs.store.StringStoreImpl;
 import sdfs.rights.AccessType;
 import sdfs.rights.Right;
 import sdfs.time.Chronos;
@@ -18,20 +18,20 @@ import java.nio.file.Path;
 public class PolicyStoreImpl implements PolicyStore {
 
     private final Chronos chronos;
-    private final Filesystem filesystem;
+    private final StringStore stringStore;
 
     public PolicyStoreImpl(
         Chronos chronos,
-        Filesystem filesystem
+        StringStore stringStore
     ) {
         this.chronos = chronos;
-        this.filesystem = filesystem;
+        this.stringStore = stringStore;
     }
 
     public static PolicyStoreImpl fromConfig(Config config) {
         return new PolicyStoreImpl(
             new ChronosImpl(),
-            new FilesystemImpl(
+            new StringStoreImpl(
                 new File(config.getString("sdfs.store.server")).toPath()
             )
         );
@@ -62,7 +62,7 @@ public class PolicyStoreImpl implements PolicyStore {
     }
 
     private Policy loadPolicy(String resourceName) {
-        String configString = filesystem.read(policyFile(resourceName));
+        String configString = stringStore.read(policyFile(resourceName));
         if (configString == null) {
             configString = "";
         }
@@ -70,7 +70,7 @@ public class PolicyStoreImpl implements PolicyStore {
     }
 
     private void savePolicy(String resourceName, Policy policy) {
-        filesystem.write(
+        stringStore.write(
             policyFile(resourceName),
             policy.x.root().render(
                 ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)

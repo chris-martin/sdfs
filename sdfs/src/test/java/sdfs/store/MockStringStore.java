@@ -1,12 +1,10 @@
 package sdfs.store;
 
-import sdfs.store.Filesystem;
-
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MockFilesystem implements Filesystem {
+public class MockStringStore implements StringStore {
 
     final Map<Path, String> data = new HashMap<>();
 

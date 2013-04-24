@@ -2,7 +2,7 @@ package sdfs.store;
 
 import java.nio.file.Path;
 
-public interface Filesystem {
+public interface StringStore {
 
     String read(Path path);
 
