@@ -40,7 +40,6 @@ public class Console {
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
-    Store clientStore;
     boolean halt;
 
     void run() {
@@ -224,12 +223,10 @@ public class Console {
                 System.out.println("Already connected.");
             } else {
                 try {
-                    String host = tail.size() < 1 ? "localhost" : tail.get(0);
-                    Integer port = config.getInt("sdfs.port");
-                    System.out.println("Connecting to " + host + ":" + port + "...");
-                    client = new Client(host, port, new SslContextFactory(config), clientStore);
+                    client = Client.fromConfig(config);
+                    System.out.println("Connecting to " + client.host + ":" + client.port + "...");
                     client.connect();
-                    System.out.println("Connected to " + host + ":" + port + ".");
+                    System.out.println("Connected to " + client.host + ":" + client.port + ".");
                 } catch (Exception e) {
                     System.out.println("Error: " + Throwables.getStackTraceAsString(e));
                     client = null;
@@ -273,14 +270,9 @@ public class Console {
 
     }
 
-    void initStores() {
-        clientStore = new SimpleStore(new File(config.getString("sdfs.client-store-path")));
-    }
-
     public static void main(String[] args) {
         Console console = new Console();
         console.config = config(args);
-        console.initStores();
         console.run();
     }
 

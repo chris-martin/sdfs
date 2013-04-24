@@ -14,6 +14,7 @@ Commands:
 
     get <filename>      Gets file <filename> from server
     put <filename>      Sends file <filename> to server
+
     delegate[*] <filename> <client> <duration> [get] [put]
 
     server, s           Start the SDFS server

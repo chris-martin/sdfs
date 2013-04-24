@@ -2,6 +2,7 @@ package sdfs.client;
 
 import com.google.common.base.Throwables;
 import com.google.common.io.ByteSource;
+import com.typesafe.config.Config;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -15,8 +16,10 @@ import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
 import sdfs.rights.Right;
 import sdfs.ssl.SslContextFactory;
+import sdfs.store.SimpleStore;
 import sdfs.store.Store;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
 
@@ -24,8 +27,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class Client {
 
-    private final String host;
-    private final int port;
+    public final String host;
+    public final int port;
     private final SslContextFactory sslContextFactory;
 
     private final Store store;
@@ -40,6 +43,15 @@ public class Client {
         this.port = port;
         this.sslContextFactory = sslContextFactory;
         this.store = store;
+    }
+
+    public static Client fromConfig(Config config) {
+        return new Client(
+            config.getString("sdfs.host"),
+            config.getInt("sdfs.port"),
+            new SslContextFactory(config),
+            new SimpleStore(new File(config.getString("sdfs.client-store-path")))
+        );
     }
 
     public synchronized void connect() throws ConnectException {
