@@ -99,7 +99,9 @@ public class SDFSImpl implements SDFS {
     }
 
     public synchronized void delegate(CN from, CN to, String resourceName, Right right, Instant expiration) {
-        // todo
+
+        policyStore.delegate(from, to, resourceName, right, expiration);
+
     }
 
     private synchronized void release(GetImpl get) {
