@@ -17,7 +17,7 @@ import sdfs.protocol.Protocol;
 import sdfs.rights.Right;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.ByteStore;
-import sdfs.store.SimpleStore;
+import sdfs.store.FileByteStore;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +50,7 @@ public class Client {
             config.getString("sdfs.host"),
             config.getInt("sdfs.port"),
             new SslContextFactory(config),
-            new SimpleStore(new File(config.getString("sdfs.client-store-path")))
+            new FileByteStore(new File(config.getString("sdfs.client-store-path")))
         );
     }
 

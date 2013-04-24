@@ -7,11 +7,11 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 
-public class SimpleStore implements ByteStore {
+public class FileByteStore implements ByteStore {
 
     private final File dir;
 
-    public SimpleStore(File dir) {
+    public FileByteStore(File dir) {
         this.dir = dir;
     }
 

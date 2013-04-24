@@ -9,7 +9,7 @@ import sdfs.server.policy.PolicyStore;
 import sdfs.server.policy.PolicyStoreImpl;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.ByteStore;
-import sdfs.store.SimpleStore;
+import sdfs.store.FileByteStore;
 
 import javax.net.ssl.SSLContext;
 
@@ -45,7 +45,7 @@ public class Server {
         return new Server(
             config.getInt("sdfs.port"),
             new SslContextFactory(config).newContext(),
-            new SimpleStore(new File(config.getString("sdfs.server-store-path"))),
+            new FileByteStore(new File(config.getString("sdfs.server-store-path"))),
             PolicyStoreImpl.fromConfig(config)
         );
     }
