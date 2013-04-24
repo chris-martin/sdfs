@@ -1,6 +1,5 @@
 package sdfs.store;
 
-import com.google.common.base.Joiner;
 import com.google.common.io.ByteSink;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Files;
@@ -8,11 +7,14 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class FileStore implements ByteStore, StringStore, PathManipulator {
+
+    private final Charset charset = StandardCharsets.UTF_8;
 
     private final Path rootPath;
 
@@ -45,7 +47,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
         }
 
         try {
-            return Joiner.on("").join(java.nio.file.Files.readAllLines(path, Charset.forName("UTF-8")));
+            return new String(java.nio.file.Files.readAllBytes(path));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -64,7 +66,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
         }
 
         try {
-            java.nio.file.Files.write(path, content.getBytes(Charset.forName("UTF-8")));
+            java.nio.file.Files.write(path, content.getBytes(charset));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
