@@ -5,7 +5,7 @@ import com.google.common.io.ByteSource;
 
 import java.io.IOException;
 
-public interface Store {
+public interface ByteStore {
 
     ByteSink put(String filename) throws IOException;
 

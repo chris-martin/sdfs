@@ -7,7 +7,7 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 
-public class SimpleStore implements Store {
+public class SimpleStore implements ByteStore {
 
     private final File dir;
 

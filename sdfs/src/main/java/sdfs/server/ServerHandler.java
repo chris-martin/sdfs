@@ -14,7 +14,7 @@ import sdfs.CN;
 import sdfs.protocol.*;
 import sdfs.rights.AccessType;
 import sdfs.server.policy.PolicyStore;
-import sdfs.store.Store;
+import sdfs.store.ByteStore;
 
 import javax.net.ssl.SSLSession;
 import java.io.InputStream;
@@ -27,12 +27,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
     private final Protocol protocol = new Protocol();
-    private final Store store;
+    private final ByteStore store;
     private final PolicyStore policyStore;
 
     private CN client;
 
-    public ServerHandler(Store store, PolicyStore policyStore) {
+    public ServerHandler(ByteStore store, PolicyStore policyStore) {
         this.store = store;
         this.policyStore = policyStore;
     }

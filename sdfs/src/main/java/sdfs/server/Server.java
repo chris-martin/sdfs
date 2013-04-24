@@ -8,8 +8,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import sdfs.server.policy.PolicyStore;
 import sdfs.server.policy.PolicyStoreImpl;
 import sdfs.ssl.SslContextFactory;
+import sdfs.store.ByteStore;
 import sdfs.store.SimpleStore;
-import sdfs.store.Store;
 
 import javax.net.ssl.SSLContext;
 
@@ -24,7 +24,7 @@ public class Server {
 
     public final int port;
     private final SSLContext sslContext;
-    private final Store store;
+    private final ByteStore store;
     private final PolicyStore policyStore;
 
     private EventLoopGroup bossGroup;
@@ -34,7 +34,7 @@ public class Server {
 
     private boolean started;
 
-    public Server(int port, SSLContext sslContext, Store store, PolicyStore policyStore) {
+    public Server(int port, SSLContext sslContext, ByteStore store, PolicyStore policyStore) {
         this.port = port;
         this.sslContext = sslContext;
         this.store = store;

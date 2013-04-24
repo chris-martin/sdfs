@@ -9,7 +9,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.joda.time.Duration;
@@ -22,9 +21,6 @@ import sdfs.server.Server;
 import sdfs.rights.AccessType;
 import sdfs.rights.DelegationType;
 import sdfs.rights.Right;
-import sdfs.ssl.SslContextFactory;
-import sdfs.store.SimpleStore;
-import sdfs.store.Store;
 
 import java.io.File;
 import java.io.IOException;

@@ -6,16 +6,16 @@ import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.protocol.*;
-import sdfs.store.Store;
+import sdfs.store.ByteStore;
 
 public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
     private final Protocol protocol = new Protocol();
-    private final Store store;
+    private final ByteStore store;
 
-    public ClientHandler(Store store) {
+    public ClientHandler(ByteStore store) {
         this.store = store;
     }
 

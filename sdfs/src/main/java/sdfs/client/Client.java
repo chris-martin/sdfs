@@ -16,8 +16,8 @@ import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
 import sdfs.rights.Right;
 import sdfs.ssl.SslContextFactory;
+import sdfs.store.ByteStore;
 import sdfs.store.SimpleStore;
-import sdfs.store.Store;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,14 +31,14 @@ public class Client {
     public final int port;
     private final SslContextFactory sslContextFactory;
 
-    private final Store store;
+    private final ByteStore store;
 
     private final Protocol protocol = new Protocol();
 
     private EventLoopGroup group;
     private Channel channel;
 
-    public Client(String host, int port, SslContextFactory sslContextFactory, Store store) {
+    public Client(String host, int port, SslContextFactory sslContextFactory, ByteStore store) {
         this.host = host;
         this.port = port;
         this.sslContextFactory = sslContextFactory;
