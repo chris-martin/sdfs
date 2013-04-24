@@ -47,7 +47,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
         }
 
         try {
-            return new String(java.nio.file.Files.readAllBytes(path));
+            return new String(java.nio.file.Files.readAllBytes(path), charset);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
