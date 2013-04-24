@@ -47,10 +47,8 @@ public class Console {
         }
         shutdownHook = new Thread(new Runnable() {
             public void run() {
-                synchronized(Console.this) {
-                    shutdownHook = null;
-                    stop();
-                }
+                shutdownHook = null;
+                stop();
             }
         });
         Runtime.getRuntime().addShutdownHook(shutdownHook);
