@@ -14,6 +14,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sdfs.protocol.HeaderCodec;
 import sdfs.protocol.Protocol;
 import sdfs.store.Store;
 
@@ -49,6 +50,7 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
                 new DelimiterBasedFrameDecoder(protocol.maxHeaderLength(), protocol.headerDelimiter()));
         pipeline.addLast("decoder", new StringDecoder(protocol.headerCharset()));
         pipeline.addLast("encoder", new StringEncoder(BufType.BYTE, protocol.headerCharset()));
+        pipeline.addLast("header", new HeaderCodec());
         pipeline.addLast("client", new ClientHandler(store));
     }
 

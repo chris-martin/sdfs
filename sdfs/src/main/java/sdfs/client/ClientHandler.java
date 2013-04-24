@@ -1,23 +1,14 @@
 package sdfs.client;
 
-import com.google.common.base.Joiner;
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashCodes;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sdfs.protocol.InboundFile;
-import sdfs.protocol.InboundFileHandler;
-import sdfs.protocol.Protocol;
-import sdfs.protocol.ProtocolException;
+import sdfs.protocol.*;
 import sdfs.store.Store;
 
-import java.util.Iterator;
-import java.util.List;
-
-public class ClientHandler extends ChannelInboundMessageHandlerAdapter<String> {
+public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
@@ -38,32 +29,20 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<String> {
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, String msg) throws Exception {
-        List<String> headersList = protocol.decodeHeaders(msg);
-        log.info("received headers\n{}", Joiner.on('\n').join(headersList));
-
-        Iterator<String> headers = headersList.iterator();
-
-        String correlationId = headers.next();
-        String cmd = headers.next();
-
-        if (cmd.equals(protocol.bye())) {
+    public void messageReceived(ChannelHandlerContext ctx, Header header) throws Exception {
+        if (header instanceof Header.Bye) {
             ctx.close();
-        } else if (cmd.equals(protocol.put())) {
-            String filename = headers.next();
-            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(headers.next()));
-            long size = Long.parseLong(headers.next());
-
-            InboundFile inboundFile =
-                    new InboundFile(store.put(filename).openBufferedStream(), hash, protocol.fileHashFunction(), size);
+        } else if (header instanceof Header.Put) {
+            Header.Put put = (Header.Put) header;
+            InboundFile inboundFile = new InboundFile(
+                    store.put(put.filename).openBufferedStream(), put.hash, protocol.fileHashFunction(), put.size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
-            log.info("Receiving file `{}' ({} bytes)", filename, size);
-        } else if (cmd.equals(protocol.prohibited())) {
-            log.info("Request {} prohibited", correlationId);
-            // TODO fix for put
+            log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);
+        } else if (header instanceof Header.Prohibited) {
+            log.info("Request {} prohibited", header.correlationId);
         } else {
-            throw new ProtocolException("Invalid command: " + cmd);
+            throw new ProtocolException("Invalid header");
         }
     }
 

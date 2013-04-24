@@ -1,9 +1,5 @@
 package sdfs.server;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashCodes;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import io.netty.channel.ChannelFuture;
@@ -12,28 +8,21 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedStream;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
-import sdfs.protocol.InboundFile;
-import sdfs.protocol.InboundFileHandler;
-import sdfs.protocol.Protocol;
-import sdfs.protocol.ProtocolException;
+import sdfs.protocol.*;
 import sdfs.rights.AccessType;
-import sdfs.rights.Right;
 import sdfs.server.policy.PolicyStore;
 import sdfs.store.Store;
 
 import javax.net.ssl.SSLSession;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Iterator;
-import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
+public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
 
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
@@ -66,77 +55,60 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<String> {
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, String msg) throws Exception {
-        List<String> headersList = protocol.decodeHeaders(msg);
-        log.info("received headers\n{}", Joiner.on('\n').join(headersList));
-
-        Iterator<String> headers = headersList.iterator();
-
-        String correlationId = headers.next();
-        String cmd = headers.next();
-
-        if (cmd.equals(protocol.bye())) {
+    public void messageReceived(ChannelHandlerContext ctx, Header header) throws Exception {
+        if (header instanceof Header.Bye) {
             ctx.close();
-        } else if (cmd.equals(protocol.put())) {
-            String filename = headers.next();
+        } else if (header instanceof Header.Put) {
+            Header.Put put = (Header.Put) header;
 
-            HashCode hash = HashCodes.fromBytes(protocol.hashEncoding().decode(headers.next()));
-            long size = Long.parseLong(headers.next());
-
-            log.info("Receiving file `{}' ({} bytes) from {}", filename, size, client);
+            log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
             OutputStream out;
-            if (!policyStore.hasAccess(client, filename, AccessType.Put)) {
+            if (!policyStore.hasAccess(client, put.filename, AccessType.Put)) {
                 out = ByteStreams.nullOutputStream(); // ignore the actual file contents
-                ctx.write(protocol.encodeHeaders(ImmutableList.of(
-                        correlationId,
-                        protocol.prohibited()
-                )));
+                Header.Prohibited prohibited = new Header.Prohibited();
+                prohibited.correlationId = header.correlationId;
+                ctx.write(prohibited);
             } else {
-                policyStore.grantOwner(client, filename);
-                out = store.put(filename).openBufferedStream();
+                policyStore.grantOwner(client, put.filename);
+                out = store.put(put.filename).openBufferedStream();
             }
 
             InboundFile inboundFile =
-                    new InboundFile(out, hash, protocol.fileHashFunction(), size);
+                    new InboundFile(out, put.hash, protocol.fileHashFunction(), put.size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
-        } else if (cmd.equals(protocol.get())) {
-            String filename = headers.next();
+        } else if (header instanceof Header.Get) {
+            Header.Get get = (Header.Get) header;
 
-            if (!policyStore.hasAccess(client, filename, AccessType.Get)) {
-                ctx.write(protocol.encodeHeaders(ImmutableList.of(
-                        correlationId,
-                        protocol.prohibited()
-                )));
+            if (!policyStore.hasAccess(client, get.filename, AccessType.Get)) {
+                Header.Prohibited prohibited = new Header.Prohibited();
+                prohibited.correlationId = header.correlationId;
+                ctx.write(prohibited);
                 return;
             }
 
-            ByteSource file = store.get(filename);
-            HashCode hash = file.hash(protocol.fileHashFunction());
+            ByteSource file = store.get(get.filename);
 
-            log.info("Sending file `{}' ({} bytes) to {}", filename, file.size(), client);
+            log.info("Sending file `{}' ({} bytes) to {}", get.filename, file.size(), client);
 
-            ctx.write(protocol.encodeHeaders(ImmutableList.of(
-                    correlationId,
-                    protocol.put(),
-                    filename,
-                    protocol.hashEncoding().encode(hash.asBytes()),
-                    String.valueOf(file.size())
-            )));
+            Header.Put put = new Header.Put();
+            put.correlationId = header.correlationId;
+            put.filename = get.filename;
+            put.hash = file.hash(protocol.fileHashFunction());
+            put.size = file.size();
+            ctx.write(put);
+
             InputStream src = file.openStream();
             ctx.write(new ChunkedStream(src));
-        } else if (cmd.equals(protocol.delegate())) {
-            String filename = headers.next();
-            CN delegateClient = new CN(headers.next());
-            Right right = protocol.decodeRight(headers.next());
-            Instant expiration = new Instant(Long.parseLong(headers.next()));
+        } else if (header instanceof Header.Delegate) {
+            Header.Delegate delegate = (Header.Delegate) header;
 
             log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
-                    right, filename, client, delegateClient, expiration.toString());
+                    delegate.right, delegate.filename, client, delegate.to, delegate.expiration);
 
-            policyStore.delegate(client, delegateClient, filename, right, expiration);
+            policyStore.delegate(client, delegate.to, delegate.filename, delegate.right, delegate.expiration);
         } else {
-            throw new ProtocolException("Invalid command: " + cmd);
+            throw new ProtocolException("Invalid header");
         }
     }
 
