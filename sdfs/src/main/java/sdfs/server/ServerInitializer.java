@@ -16,8 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.protocol.HeaderCodec;
 import sdfs.protocol.Protocol;
-import sdfs.server.policy.PolicyStore;
-import sdfs.store.ByteStore;
+import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -27,15 +26,13 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
     private static final Logger log = LoggerFactory.getLogger(ServerInitializer.class);
 
     private final SSLContext sslContext;
-    private final ByteStore store;
-    private final PolicyStore policyStore;
+    private final SDFS sdfs;
 
     private final Protocol protocol = new Protocol();
 
-    public ServerInitializer(SSLContext sslContext, ByteStore store, PolicyStore policyStore) {
+    public ServerInitializer(SSLContext sslContext, SDFS sdfs) {
         this.sslContext = sslContext;
-        this.store = store;
-        this.policyStore = policyStore;
+        this.sdfs = sdfs;
     }
 
     @Override
@@ -56,7 +53,7 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("decoder", new StringDecoder(protocol.headerCharset()));
         pipeline.addLast("encoder", new StringEncoder(BufType.BYTE, protocol.headerCharset()));
         pipeline.addLast("header", new HeaderCodec());
-        pipeline.addLast("server", new ServerHandler(store, policyStore));
+        pipeline.addLast("server", new ServerHandler(sdfs));
     }
 
     @Override

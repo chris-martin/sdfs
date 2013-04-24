@@ -5,15 +5,11 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import sdfs.server.policy.PolicyStore;
-import sdfs.server.policy.PolicyStoreImpl;
+import sdfs.sdfs.SDFS;
+import sdfs.sdfs.SDFSImpl;
 import sdfs.ssl.SslContextFactory;
-import sdfs.store.ByteStore;
-import sdfs.store.FileByteStore;
 
 import javax.net.ssl.SSLContext;
-
-import java.io.File;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -24,8 +20,7 @@ public class Server {
 
     public final int port;
     private final SSLContext sslContext;
-    private final ByteStore store;
-    private final PolicyStore policyStore;
+    private final SDFS sdfs;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -34,19 +29,17 @@ public class Server {
 
     private boolean started;
 
-    public Server(int port, SSLContext sslContext, ByteStore store, PolicyStore policyStore) {
+    public Server(int port, SSLContext sslContext, SDFS sdfs) {
         this.port = port;
         this.sslContext = sslContext;
-        this.store = store;
-        this.policyStore = policyStore;
+        this.sdfs = sdfs;
     }
 
     public static Server fromConfig(Config config) {
         return new Server(
             config.getInt("sdfs.port"),
             new SslContextFactory(config).newContext(),
-            new FileByteStore(new File(config.getString("sdfs.server-store-path"))),
-            PolicyStoreImpl.fromConfig(config)
+            SDFSImpl.fromConfig(config)
         );
     }
 
@@ -85,7 +78,7 @@ public class Server {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(sslContext, store, policyStore));
+                    .childHandler(new ServerInitializer(sslContext, sdfs));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
         } catch (InterruptedException ignored) {

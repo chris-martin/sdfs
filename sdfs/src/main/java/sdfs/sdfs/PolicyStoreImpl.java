@@ -1,4 +1,4 @@
-package sdfs.server.policy;
+package sdfs.sdfs;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -15,7 +15,7 @@ import sdfs.time.ChronosImpl;
 import java.io.File;
 import java.nio.file.Path;
 
-public class PolicyStoreImpl implements PolicyStore {
+class PolicyStoreImpl implements PolicyStore {
 
     private final Chronos chronos;
     private final StringStore stringStore;

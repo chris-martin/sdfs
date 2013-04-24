@@ -13,8 +13,7 @@ import org.slf4j.LoggerFactory;
 import sdfs.CN;
 import sdfs.protocol.*;
 import sdfs.rights.AccessType;
-import sdfs.server.policy.PolicyStore;
-import sdfs.store.ByteStore;
+import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLSession;
 import java.io.InputStream;
@@ -27,14 +26,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
     private final Protocol protocol = new Protocol();
-    private final ByteStore store;
-    private final PolicyStore policyStore;
+    private final SDFS sdfs;
 
     private CN client;
 
-    public ServerHandler(ByteStore store, PolicyStore policyStore) {
-        this.store = store;
-        this.policyStore = policyStore;
+    public ServerHandler(SDFS sdfs) {
+        this.sdfs = sdfs;
     }
 
     @Override
@@ -64,14 +61,14 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
             OutputStream out;
-            if (!policyStore.hasAccess(client, put.filename, AccessType.Put)) {
+            if (!sdfs.policyStore().hasAccess(client, put.filename, AccessType.Put)) {
                 out = ByteStreams.nullOutputStream(); // ignore the actual file contents
                 Header.Prohibited prohibited = new Header.Prohibited();
                 prohibited.correlationId = header.correlationId;
                 ctx.write(prohibited);
             } else {
-                policyStore.grantOwner(client, put.filename);
-                out = store.put(put.filename).openBufferedStream();
+                sdfs.policyStore().grantOwner(client, put.filename);
+                out = sdfs.byteStore().put(put.filename).openBufferedStream();
             }
 
             InboundFile inboundFile =
@@ -80,14 +77,14 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         } else if (header instanceof Header.Get) {
             Header.Get get = (Header.Get) header;
 
-            if (!policyStore.hasAccess(client, get.filename, AccessType.Get)) {
+            if (!sdfs.policyStore().hasAccess(client, get.filename, AccessType.Get)) {
                 Header.Prohibited prohibited = new Header.Prohibited();
                 prohibited.correlationId = header.correlationId;
                 ctx.write(prohibited);
                 return;
             }
 
-            ByteSource file = store.get(get.filename);
+            ByteSource file = sdfs.byteStore().get(get.filename);
 
             log.info("Sending file `{}' ({} bytes) to {}", get.filename, file.size(), client);
 
@@ -106,7 +103,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
                     delegate.right, delegate.filename, client, delegate.to, delegate.expiration);
 
-            policyStore.delegate(client, delegate.to, delegate.filename, delegate.right, delegate.expiration);
+            sdfs.policyStore().delegate(client, delegate.to, delegate.filename, delegate.right, delegate.expiration);
         } else {
             throw new ProtocolException("Invalid header");
         }

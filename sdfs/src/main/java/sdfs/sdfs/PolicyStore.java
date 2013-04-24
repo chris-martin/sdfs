@@ -1,4 +1,4 @@
-package sdfs.server.policy;
+package sdfs.sdfs;
 
 import org.joda.time.Instant;
 import sdfs.CN;
