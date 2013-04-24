@@ -3,9 +3,6 @@ package sdfs.sdfs;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValueFactory;
 import org.joda.time.Instant;
-import sdfs.rights.AccessType;
-import sdfs.rights.DelegationType;
-import sdfs.rights.Right;
 
 class PrincipalRights {
 

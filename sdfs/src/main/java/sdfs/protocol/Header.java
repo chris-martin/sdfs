@@ -3,7 +3,7 @@ package sdfs.protocol;
 import com.google.common.hash.HashCode;
 import org.joda.time.Instant;
 import sdfs.CN;
-import sdfs.rights.Right;
+import sdfs.sdfs.Right;
 
 public class Header {
 

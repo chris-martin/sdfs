@@ -5,10 +5,8 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.joda.time.Instant;
 import sdfs.CN;
-import sdfs.store.FileStringStore;
+import sdfs.store.FileStore;
 import sdfs.store.StringStore;
-import sdfs.rights.AccessType;
-import sdfs.rights.Right;
 import sdfs.time.Chronos;
 import sdfs.time.ChronosImpl;
 
@@ -31,7 +29,7 @@ class PolicyStoreImpl implements PolicyStore {
     public static PolicyStoreImpl fromConfig(Config config) {
         return new PolicyStoreImpl(
             new ChronosImpl(),
-            new FileStringStore(
+            new FileStore(
                 new File(config.getString("sdfs.store.server")).toPath()
             )
         );

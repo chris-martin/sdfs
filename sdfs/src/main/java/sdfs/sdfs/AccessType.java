@@ -1,14 +1,13 @@
-package sdfs.rights;
+package sdfs.sdfs;
 
-public enum DelegationType {
+public enum AccessType {
 
-    None("_"),
-
-    Star("*");
+    Get("get"),
+    Put("put");
 
     private final String marshaled;
 
-    private DelegationType(String marshaled) {
+    private AccessType(String marshaled) {
         this.marshaled = marshaled;
     }
 

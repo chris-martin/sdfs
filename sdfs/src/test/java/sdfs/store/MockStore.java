@@ -4,16 +4,16 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MockStringStore implements StringStore {
+public class MockStore implements StringStore {
 
-    final Map<Path, String> data = new HashMap<>();
+    final Map<Path, String> strings = new HashMap<>();
 
     public String read(Path path) {
-        return data.get(path);
+        return strings.get(path);
     }
 
     public void write(Path path, String content) {
-        data.put(path, content);
+        strings.put(path, content);
     }
 
 }

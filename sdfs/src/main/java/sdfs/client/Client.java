@@ -14,10 +14,10 @@ import org.joda.time.Instant;
 import sdfs.CN;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
-import sdfs.rights.Right;
+import sdfs.sdfs.Right;
 import sdfs.ssl.SslContextFactory;
 import sdfs.store.ByteStore;
-import sdfs.store.FileByteStore;
+import sdfs.store.FileStore;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +50,7 @@ public class Client {
             config.getString("sdfs.host"),
             config.getInt("sdfs.port"),
             new SslContextFactory(config),
-            new FileByteStore(new File(config.getString("sdfs.client-store-path")))
+            new FileStore(new File(config.getString("sdfs.client-store-path")).toPath())
         );
     }
 
@@ -82,7 +82,7 @@ public class Client {
     }
 
     public void put(String filename) {
-        ByteSource file = store.get(filename);
+        ByteSource file = store.get(new File(filename).toPath());
         try {
             Header.Put put = new Header.Put();
             put.filename = filename;

@@ -18,9 +18,9 @@ import scala.tools.jline.console.ConsoleReader;
 import scala.tools.jline.console.history.FileHistory;
 import sdfs.client.Client;
 import sdfs.server.Server;
-import sdfs.rights.AccessType;
-import sdfs.rights.DelegationType;
-import sdfs.rights.Right;
+import sdfs.sdfs.AccessType;
+import sdfs.sdfs.DelegationType;
+import sdfs.sdfs.Right;
 
 import java.io.File;
 import java.io.IOException;

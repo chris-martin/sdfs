@@ -5,15 +5,13 @@ import org.junit.Assert;
 import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
-import sdfs.store.MockStringStore;
-import sdfs.rights.AccessType;
-import sdfs.rights.Right;
+import sdfs.store.MockStore;
 
 public class PolicyStoreImplTest {
 
     static class Fixture {
 
-        MockStringStore filesystem = new MockStringStore();
+        MockStore filesystem = new MockStore();
         MockChronos chronos = new MockChronos();
         PolicyStoreImpl store = new PolicyStoreImpl(chronos, filesystem);
 

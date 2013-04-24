@@ -1,13 +1,38 @@
 package sdfs.sdfs;
 
-import sdfs.store.ByteStore;
+import com.google.common.io.ByteSink;
+import com.google.common.io.ByteSource;
+import org.joda.time.Instant;
+import sdfs.CN;
+
+import java.io.IOException;
 
 public interface SDFS {
 
-    @Deprecated
-    PolicyStore policyStore();
+    Get get(CN cn, String resourceName);
 
-    @Deprecated
-    ByteStore byteStore();
+    Put put(CN cn, String resourceName);
+
+    void delegate(CN from, CN to, String resourceName, Right right, Instant expiration);
+
+    interface Put {
+
+        ByteSink contentByteSink() throws IOException;
+
+        ByteSink metaByteSink() throws IOException;
+
+        void release() throws IOException;
+
+    }
+
+    interface Get {
+
+        ByteSource contentByteSource();
+
+        ByteSource metaByteSource();
+
+        void release();
+
+    }
 
 }

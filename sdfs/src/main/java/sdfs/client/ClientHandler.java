@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import sdfs.protocol.*;
 import sdfs.store.ByteStore;
 
+import java.io.File;
+
 public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
@@ -35,7 +37,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         } else if (header instanceof Header.Put) {
             Header.Put put = (Header.Put) header;
             InboundFile inboundFile = new InboundFile(
-                    store.put(put.filename).openBufferedStream(), put.hash, protocol.fileHashFunction(), put.size);
+                    store.put(new File(put.filename).toPath()).openBufferedStream(), put.hash, protocol.fileHashFunction(), put.size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);

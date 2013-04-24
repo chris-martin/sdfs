@@ -2,8 +2,6 @@ package sdfs.sdfs;
 
 import org.joda.time.Instant;
 import sdfs.CN;
-import sdfs.rights.AccessType;
-import sdfs.rights.Right;
 
 public interface PolicyStore {
 
