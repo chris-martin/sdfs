@@ -4,22 +4,28 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.io.CountingOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import static com.google.common.base.Preconditions.checkState;
+
 public class InboundFile {
 
+    private static final Logger log = LoggerFactory.getLogger(InboundFile.class);
+
     private final CountingOutputStream dest;
-    public final HashCode expectedHash;
     private final Hasher hasher;
     public final long size;
 
-    public InboundFile(OutputStream dest, HashCode expectedHash, HashFunction hashFunction, long size) {
+    private HashCode hash;
+
+    public InboundFile(OutputStream dest, HashFunction hashFunction, long size) {
         hasher = hashFunction.newHasher((int) size);
         this.dest = new CountingOutputStream(new HashingOutputStream(dest, hasher));
-        this.expectedHash = expectedHash;
         this.size = size;
     }
 
@@ -32,14 +38,14 @@ public class InboundFile {
     }
 
     public HashCode hash() {
-        return hasher.hash();
+        checkState(size == dest.getCount());
+        if (hash == null) {
+            hash = hasher.hash();
+        }
+        return hash;
     }
 
-    public boolean hashMatches() {
-        return expectedHash.equals(hash());
-    }
-
-    private static final class HashingOutputStream extends FilterOutputStream {
+    private final class HashingOutputStream extends FilterOutputStream {
 
         private final Hasher hasher;
 

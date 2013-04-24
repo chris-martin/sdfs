@@ -2,8 +2,10 @@ package sdfs.protocol;
 
 import com.google.common.io.CountingOutputStream;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundByteHandlerAdapter;
+import io.netty.channel.ChannelPromise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +17,19 @@ public class InboundFileHandler extends ChannelInboundByteHandlerAdapter {
 
     private final InboundFile inboundFile;
 
+    private ChannelPromise transferDone;
+
     public InboundFileHandler(InboundFile inboundFile) {
         this.inboundFile = inboundFile;
+    }
+
+    @Override
+    public void beforeAdd(ChannelHandlerContext ctx) throws Exception {
+        transferDone = ctx.newPromise();
+    }
+
+    public ChannelFuture transferDone() {
+        return transferDone;
     }
 
     @Override
@@ -27,10 +40,9 @@ public class InboundFileHandler extends ChannelInboundByteHandlerAdapter {
         if (inboundFile.count() == inboundFile.size) {
             log.debug("Finished receiving inbound file ({} bytes)", inboundFile.count());
             ctx.pipeline().remove(this);
-            log.info("Hash {}match", inboundFile.hashMatches() ? "" : "mis");
-            // TODO retry on mismatch ?
             dest.flush();
             dest.close();
+            transferDone.setSuccess();
         }
     }
 }

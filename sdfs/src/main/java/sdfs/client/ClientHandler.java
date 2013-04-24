@@ -37,7 +37,9 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         } else if (header instanceof Header.Put) {
             Header.Put put = (Header.Put) header;
             InboundFile inboundFile = new InboundFile(
-                    store.put(new File(put.filename).toPath()).openBufferedStream(), put.hash, protocol.fileHashFunction(), put.size);
+                    store.put(new File(put.filename).toPath()).openBufferedStream(),
+                    protocol.fileHashFunction(),
+                    put.size);
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);

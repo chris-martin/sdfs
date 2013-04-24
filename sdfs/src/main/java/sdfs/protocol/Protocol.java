@@ -33,7 +33,7 @@ public class Protocol {
     }
 
     private String endHeader() {
-        return "-----END HEADER-----";
+        return "\n-----END HEADER-----";
     }
 
     public ByteBuf headerDelimiter() {

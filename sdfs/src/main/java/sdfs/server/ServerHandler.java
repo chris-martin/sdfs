@@ -1,5 +1,6 @@
 package sdfs.server;
 
+import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import io.netty.channel.ChannelFuture;
@@ -11,6 +12,7 @@ import io.netty.handler.stream.ChunkedStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
+import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
 import sdfs.sdfs.AccessControlException;
 import sdfs.sdfs.ResourceUnavailableException;
@@ -28,11 +30,13 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
 
     private final Protocol protocol = new Protocol();
     private final SDFS sdfs;
+    private final UnlockedBlockCipher fileHashCipher;
 
     private CN client;
 
-    public ServerHandler(SDFS sdfs) {
+    public ServerHandler(SDFS sdfs, UnlockedBlockCipher fileHashCipher) {
         this.sdfs = sdfs;
+        this.fileHashCipher = fileHashCipher;
     }
 
     @Override
@@ -57,7 +61,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         if (header instanceof Header.Bye) {
             ctx.close();
         } else if (header instanceof Header.Put) {
-            Header.Put put = (Header.Put) header;
+            final Header.Put put = (Header.Put) header;
 
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
@@ -76,9 +80,30 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             }
 
             // todo Give the SDFS.Put instance to the InboundFile?
-            InboundFile inboundFile =
-                    new InboundFile(out, put.hash, protocol.fileHashFunction(), put.size);
-            ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
+            final InboundFile inboundFile =
+                    new InboundFile(out, protocol.fileHashFunction(), put.size);
+            InboundFileHandler handler = new InboundFileHandler(inboundFile);
+            ctx.pipeline().addBefore("framer", "inboundFile", handler);
+            handler.transferDone().addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (!put.hash.equals(inboundFile.hash())) {
+                        log.debug("Hash mismatch:\nheader: {}\nactual: {}", put.hash, inboundFile.hash());
+                        throw new ProtocolException("Actual file hash does not match hash in header");
+                    }
+                    // TODO write key to store
+                    byte[] hash = inboundFile.hash().asBytes();
+                    byte[] encryptedFileHash = fileHashCipher.encrypt(hash);
+
+                    BaseEncoding base64 = BaseEncoding.base64();
+                    log.debug("File hash ({} bytes)\n{}\nencrypted as ({} bytes)\n{}",
+                            hash.length,
+                            base64.encode(hash),
+                            encryptedFileHash.length,
+                            base64.encode(encryptedFileHash)
+                    );
+                }
+            });
         } else if (header instanceof Header.Get) {
             Header.Get get = (Header.Get) header;
 

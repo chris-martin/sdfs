@@ -7,9 +7,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import sdfs.sdfs.SDFS;
 import sdfs.sdfs.SDFSImpl;
-import sdfs.ssl.SslContextFactory;
-
-import javax.net.ssl.SSLContext;
+import sdfs.ssl.Ssl;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -19,7 +17,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class Server {
 
     public final int port;
-    private final SSLContext sslContext;
+    private final Ssl ssl;
     private final SDFS sdfs;
 
     private EventLoopGroup bossGroup;
@@ -29,16 +27,16 @@ public class Server {
 
     private boolean started;
 
-    public Server(int port, SSLContext sslContext, SDFS sdfs) {
+    public Server(int port, Ssl ssl, SDFS sdfs) {
         this.port = port;
-        this.sslContext = sslContext;
+        this.ssl = ssl;
         this.sdfs = sdfs;
     }
 
     public static Server fromConfig(Config config) {
         return new Server(
             config.getInt("sdfs.port"),
-            new SslContextFactory(config).newContext(),
+            new Ssl(config),
             SDFSImpl.fromConfig(config)
         );
     }
@@ -78,7 +76,7 @@ public class Server {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(sslContext, sdfs));
+                    .childHandler(new ServerInitializer(ssl, sdfs));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
         } catch (InterruptedException ignored) {
