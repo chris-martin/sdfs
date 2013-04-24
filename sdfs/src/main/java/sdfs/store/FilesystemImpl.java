@@ -1,4 +1,4 @@
-package sdfs.filesystem;
+package sdfs.store;
 
 import com.google.common.base.Joiner;
 

@@ -5,7 +5,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import sdfs.CN;
 import sdfs.MockChronos;
-import sdfs.MockFilesystem;
+import sdfs.store.MockFilesystem;
 import sdfs.rights.AccessType;
 import sdfs.rights.Right;
 
