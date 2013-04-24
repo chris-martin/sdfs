@@ -8,11 +8,11 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class StringStoreImpl implements StringStore {
+public class FileStringStore implements StringStore {
 
     private final Path rootPath;
 
-    public StringStoreImpl(Path rootPath) {
+    public FileStringStore(Path rootPath) {
         this.rootPath = rootPath;
     }
 
