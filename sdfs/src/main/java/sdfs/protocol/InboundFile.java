@@ -1,5 +1,6 @@
 package sdfs.protocol;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
@@ -18,10 +19,12 @@ public class InboundFile {
 
     private static final Logger log = LoggerFactory.getLogger(InboundFile.class);
 
-    private final CountingOutputStream dest;
+    private final OutputStream dest;
     public final long size;
+    private long count;
     private final Hasher hasher;
     private final HashCode expectedHash;
+    private final Stopwatch stopwatch;
 
     private HashCode hash;
 
@@ -30,12 +33,13 @@ public class InboundFile {
         this.expectedHash = expectedHash;
         this.dest = new CountingOutputStream(new HashingOutputStream(dest, hasher));
         this.size = size;
+        stopwatch = new Stopwatch().start();
     }
 
     /** Reads from the given input buffer. Returns true iff done receiving the file and hash matches correctly. */
     public boolean read(ByteBuf in) throws IOException {
         in.readBytes(dest, in.readableBytes());
-        if (dest.getCount() == size) {
+        if (count == size) {
             close();
             return true;
         }
@@ -43,6 +47,7 @@ public class InboundFile {
     }
 
     void close() throws IOException {
+        log.info("Received file ({} bytes) in {}", size, stopwatch.stop());
         dest.flush();
         dest.close();
         checkHashMatches();
@@ -55,7 +60,7 @@ public class InboundFile {
     }
 
     private HashCode hash() {
-        checkState(size == dest.getCount());
+        checkState(count == size);
         if (hash == null) {
             hash = hasher.hash();
         }
@@ -75,12 +80,14 @@ public class InboundFile {
         public void write(int b) throws IOException {
             out.write(b);
             hasher.putByte((byte) b);
+            count++;
         }
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
             out.write(b, off, len);
             hasher.putBytes(b, off, len);
+            count += len;
         }
     }
 }

@@ -1,5 +1,6 @@
 package sdfs.client;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.google.common.io.ByteSource;
 import com.typesafe.config.Config;
@@ -11,6 +12,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.stream.ChunkedStream;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sdfs.CN;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
@@ -26,6 +29,8 @@ import java.net.ConnectException;
 import static com.google.common.base.Preconditions.checkState;
 
 public class Client {
+
+    private static final Logger log = LoggerFactory.getLogger(Client.class);
 
     public final String host;
     public final int port;
@@ -86,9 +91,16 @@ public class Client {
         try {
             Header.Put put = new Header.Put();
             put.filename = filename;
+
+            log.debug("Calculating hash");
+            Stopwatch stopwatch = new Stopwatch().start();
             put.hash = file.hash(protocol.fileHashFunction());
+            log.debug("Hashed file in {}", stopwatch.stop());
+
             put.size = file.size();
             channel.write(put);
+
+            log.debug("Writing file contents");
             channel.write(new ChunkedStream(file.openBufferedStream()));
         } catch (IOException e) {
             throw new RuntimeException(e);

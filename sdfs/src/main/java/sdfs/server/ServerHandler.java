@@ -85,7 +85,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             } else {
                 fileContent = sdfsPut.contentByteSink().openBufferedStream();
                 byte[] fileHash = put.hash.asBytes();
-                log.debug("File hash {}", BaseEncoding.base16().encode(fileHash));
+                log.debug("File hash {}", BaseEncoding.base16().lowerCase().encode(fileHash));
                 fileContent = cipherStreamFactory.encrypt(fileContent, fileHash);
             }
 
@@ -117,7 +117,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                 fileMetaData = FileMetaData.readFrom(in);
             }
             byte[] fileHash = fileHashCipher.decrypt(fileMetaData.encryptedHash);
-            log.debug("Recovered file hash {}", BaseEncoding.base16().encode(fileHash));
+            log.debug("Recovered file hash {}", BaseEncoding.base16().lowerCase().encode(fileHash));
 
             log.info("Sending file `{}' ({} bytes) to {}", get.filename, fileMetaData.size, client);
 
