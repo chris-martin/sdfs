@@ -1,5 +1,7 @@
 package sdfs.server;
 
+import com.google.common.hash.HashCodes;
+import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import io.netty.channel.ChannelFuture;
@@ -13,6 +15,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
+import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
 import sdfs.sdfs.*;
@@ -20,8 +23,7 @@ import sdfs.sdfs.ResourceUnavailableException;
 import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLSession;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -32,12 +34,14 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
     private final Protocol protocol = new Protocol();
     private final SDFS sdfs;
     private final UnlockedBlockCipher fileHashCipher;
+    private final CipherStreamFactory cipherStreamFactory;
 
     private CN client;
 
-    public ServerHandler(SDFS sdfs, UnlockedBlockCipher fileHashCipher) {
+    public ServerHandler(SDFS sdfs, UnlockedBlockCipher fileHashCipher, CipherStreamFactory cipherStreamFactory) {
         this.sdfs = sdfs;
         this.fileHashCipher = fileHashCipher;
+        this.cipherStreamFactory = cipherStreamFactory;
     }
 
     @Override
@@ -75,8 +79,15 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                 ctx.write(Header.prohibited(put));
             }
 
-            OutputStream fileContent = sdfsPut == null ?
-                    ByteStreams.nullOutputStream() : sdfsPut.contentByteSink().openBufferedStream();
+            OutputStream fileContent;
+            if (sdfsPut == null) {
+                fileContent = ByteStreams.nullOutputStream();
+            } else {
+                fileContent = sdfsPut.contentByteSink().openBufferedStream();
+                byte[] fileHash = put.hash.asBytes();
+                log.debug("File hash {}", BaseEncoding.base16().encode(fileHash));
+                fileContent = cipherStreamFactory.encrypt(fileContent, fileHash);
+            }
 
             final InboundFile inboundFile =
                     new InboundFile(fileContent, put.size, protocol.fileHashFunction(), put.hash);
@@ -101,19 +112,26 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                 return;
             }
 
-            ByteSource file = sdfsGet.contentByteSource();
+            FileMetaData fileMetaData;
+            try (InputStream in = sdfsGet.metaByteSource().openBufferedStream()) {
+                fileMetaData = FileMetaData.readFrom(in);
+            }
+            byte[] fileHash = fileHashCipher.decrypt(fileMetaData.encryptedHash);
+            log.debug("Recovered file hash {}", BaseEncoding.base16().encode(fileHash));
 
-            log.info("Sending file `{}' ({} bytes) to {}", get.filename, file.size(), client);
+            log.info("Sending file `{}' ({} bytes) to {}", get.filename, fileMetaData.size, client);
 
             Header.Put put = new Header.Put();
             put.correlationId = header.correlationId;
             put.filename = get.filename;
-            put.hash = file.hash(protocol.fileHashFunction());
-            put.size = file.size();
+            put.hash = HashCodes.fromBytes(fileHash);
+            put.size = fileMetaData.size;
             ctx.write(put);
 
-            InputStream src = file.openStream();
-            ctx.write(new ChunkedStream(src)).addListener(new FinishGet(src, sdfsGet));
+            InputStream fileContent = sdfsGet.contentByteSource().openStream();
+            fileContent = cipherStreamFactory.decrypt(fileContent, fileHash);
+
+            ctx.write(new ChunkedStream(fileContent)).addListener(new FinishGet(fileContent, sdfsGet));
         } else if (header instanceof Header.Delegate) {
             Header.Delegate delegate = (Header.Delegate) header;
 
@@ -140,7 +158,11 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                 try {
                     byte[] encryptedFileHash = fileHashCipher.encrypt(put.hash.asBytes());
                     log.debug("Encrypted file hash");
-                    sdfsPut.metaByteSink().write(encryptedFileHash);
+
+                    FileMetaData metaData = new FileMetaData(put.size, encryptedFileHash);
+                    try (OutputStream out = sdfsPut.metaByteSink().openBufferedStream()) {
+                        metaData.writeTo(out);
+                    }
                 } finally {
                     sdfsPut.release();
                 }

@@ -14,6 +14,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.HeaderCodec;
 import sdfs.protocol.Protocol;
@@ -30,12 +31,14 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
     private final SSLContext sslContext;
     private final SDFS sdfs;
     private final UnlockedBlockCipher fileHashCipher;
+    private final CipherStreamFactory cipherStreamFactory;
 
     private final Protocol protocol = new Protocol();
 
     public ServerInitializer(Crypto crypto, SDFS sdfs) {
         sslContext = crypto.newSslContext();
         fileHashCipher = crypto.unlockedBlockCipher();
+        cipherStreamFactory = new CipherStreamFactory(crypto);
         this.sdfs = sdfs;
     }
 
@@ -57,7 +60,7 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("decoder", new StringDecoder(protocol.headerCharset()));
         pipeline.addLast("encoder", new StringEncoder(BufType.BYTE, protocol.headerCharset()));
         pipeline.addLast("header", new HeaderCodec());
-        pipeline.addLast("server", new ServerHandler(sdfs, fileHashCipher));
+        pipeline.addLast("server", new ServerHandler(sdfs, fileHashCipher, cipherStreamFactory));
     }
 
     @Override

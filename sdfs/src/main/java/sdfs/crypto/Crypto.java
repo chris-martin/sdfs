@@ -5,14 +5,16 @@ import sdfs.crypto.Rsa;
 import sdfs.crypto.UnlockedAsymmetricBlockCipher;
 import sdfs.crypto.UnlockedBlockCipher;
 
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.security.KeyPair;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.security.*;
 
 import static java.util.Objects.requireNonNull;
 
@@ -22,6 +24,34 @@ public class Crypto {
 
     public Crypto(Config config) {
         this.config = config;
+    }
+
+    public Cipher newCipherForEncryption(byte[] key) {
+        try {
+            Cipher cipher = newCipher();
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey(key));
+            return cipher;
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Cipher newCipherForDecryption(byte[] key, byte[] iv) {
+        try {
+            Cipher cipher = newCipher();
+            cipher.init(Cipher.DECRYPT_MODE, aesKey(key), new IvParameterSpec(iv));
+            return cipher;
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | InvalidAlgorithmParameterException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private SecretKeySpec aesKey(byte[] key) {
+        return new SecretKeySpec(key, 0, 256/Byte.SIZE, "AES");
+    }
+
+    private Cipher newCipher() throws NoSuchAlgorithmException, NoSuchPaddingException {
+        return Cipher.getInstance("AES/CBC/PKCS5Padding");
     }
 
     public SSLContext newSslContext() {
