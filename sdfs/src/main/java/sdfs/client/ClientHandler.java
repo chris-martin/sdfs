@@ -38,13 +38,18 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             Header.Put put = (Header.Put) header;
             InboundFile inboundFile = new InboundFile(
                     store.put(new File(put.filename).toPath()).openBufferedStream(),
-                    protocol.fileHashFunction(),
-                    put.size);
+                    put.size, protocol.fileHashFunction(),
+                    put.hash
+            );
             ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);
         } else if (header instanceof Header.Prohibited) {
-            log.info("Request {} prohibited", header.correlationId);
+            log.info("Request {} re file `{}' prohibited", header.correlationId, ((Header.Prohibited) header).filename);
+            // TODO give the client a decent error message
+        } else if (header instanceof Header.Unavailable) {
+            log.info("File `{}' unavailable", header.correlationId, ((Header.Unavailable) header).filename);
+            // TODO give the client a decent error message
         } else {
             throw new ProtocolException("Invalid header");
         }

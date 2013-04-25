@@ -9,12 +9,35 @@ public class Header {
 
     public CorrelationId correlationId;
 
-    public static class Bye extends Header { }
+    protected void respondsTo(Header request) {
+        correlationId = request.correlationId;
+    }
 
-    public static class Prohibited extends Header { }
+    public static class Bye extends Header { }
 
     static class File extends Header {
         public String filename;
+
+        protected void respondsTo(File request) {
+            super.respondsTo(request);
+            filename = request.filename;
+        }
+    }
+
+    public static class Prohibited extends File { }
+
+    public static Prohibited prohibited(File request) {
+        Prohibited prohibited = new Prohibited();
+        prohibited.respondsTo(request);
+        return prohibited;
+    }
+
+    public static class Unavailable extends File { }
+
+    public static Unavailable unavailable(File request) {
+        Unavailable unavailable = new Unavailable();
+        unavailable.respondsTo(request);
+        return unavailable;
     }
 
     public static class Get extends File { }

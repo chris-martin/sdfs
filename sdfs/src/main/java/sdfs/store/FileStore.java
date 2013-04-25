@@ -22,13 +22,17 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
         this.rootPath = rootPath;
     }
 
+    private Path path(Path path) {
+        return rootPath.resolve(path);
+    }
+
     private File file(Path path) {
-        return rootPath.resolve(path).toFile();
+        return path(path).toFile();
     }
 
     public ByteSink put(Path path) throws IOException {
         File file = file(path);
-        if (!file.isDirectory() && !file.getParentFile().mkdirs()) {
+        if (!file.getParentFile().isDirectory() && !file.getParentFile().mkdirs()) {
             throw new IOException("Cannot create parent directory");
         }
         return Files.asByteSink(file);
@@ -40,7 +44,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
 
     public String read(Path path) {
 
-        path = rootPath.resolve(path);
+        path = path(path);
 
         if (!path.toFile().exists()) {
             return null;
@@ -56,7 +60,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
 
     public void write(Path path, String content) {
 
-        path = rootPath.resolve(path);
+        path = path(path);
 
         {
             File parent = path.getParent().toFile();
@@ -74,11 +78,21 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
     }
 
     public void move(Path source, Path target) throws IOException {
-        java.nio.file.Files.move(source, target, REPLACE_EXISTING);
+        source = path(source);
+        if (java.nio.file.Files.exists(source)) {
+            java.nio.file.Files.move(source, path(target), REPLACE_EXISTING);
+        } else {
+            delete(target);
+        }
+    }
+
+    @Override
+    public void delete(Path path) throws IOException {
+        java.nio.file.Files.deleteIfExists(path(path));
     }
 
     public boolean exists(Path path) {
-        return path.toFile().exists();
+        return java.nio.file.Files.exists(path);
     }
 
 }

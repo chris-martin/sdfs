@@ -4,6 +4,7 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.io.CountingOutputStream;
+import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,26 +19,42 @@ public class InboundFile {
     private static final Logger log = LoggerFactory.getLogger(InboundFile.class);
 
     private final CountingOutputStream dest;
-    private final Hasher hasher;
     public final long size;
+    private final Hasher hasher;
+    private final HashCode expectedHash;
 
     private HashCode hash;
 
-    public InboundFile(OutputStream dest, HashFunction hashFunction, long size) {
+    public InboundFile(OutputStream dest, long size, HashFunction hashFunction, HashCode expectedHash) {
         hasher = hashFunction.newHasher((int) size);
+        this.expectedHash = expectedHash;
         this.dest = new CountingOutputStream(new HashingOutputStream(dest, hasher));
         this.size = size;
     }
 
-    public OutputStream dest() {
-        return dest;
+    /** Reads from the given input buffer. Returns true iff done receiving the file and hash matches correctly. */
+    public boolean read(ByteBuf in) throws IOException {
+        in.readBytes(dest, in.readableBytes());
+        if (dest.getCount() == size) {
+            close();
+            return true;
+        }
+        return false;
     }
 
-    public long count() {
-        return dest.getCount();
+    void close() throws IOException {
+        dest.flush();
+        dest.close();
+        checkHashMatches();
     }
 
-    public HashCode hash() {
+    private void checkHashMatches() throws HashMismatchException {
+        if (!expectedHash.equals(hash())) {
+            throw new HashMismatchException(expectedHash, hash());
+        }
+    }
+
+    private HashCode hash() {
         checkState(size == dest.getCount());
         if (hash == null) {
             hash = hasher.hash();

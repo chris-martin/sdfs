@@ -69,6 +69,11 @@ public class MockStore implements StringStore, ByteStore, PathManipulator {
         files.put(target, files.remove(source));
     }
 
+    @Override
+    public void delete(Path path) throws IOException {
+        files.remove(path);
+    }
+
     public boolean exists(Path path) {
         return files.containsKey(path);
     }

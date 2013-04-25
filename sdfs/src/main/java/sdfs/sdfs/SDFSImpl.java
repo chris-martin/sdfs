@@ -175,10 +175,27 @@ public class SDFSImpl implements SDFS {
             pathManipulator.move(tmp().resolve(filename), path().resolve(filename));
         }
 
+        void deleteTmp(String filename) throws IOException {
+            pathManipulator.delete(tmp().resolve(filename));
+        }
+
         public void release() throws IOException {
             try {
                 moveFromTmp("content");
                 moveFromTmp("meta");
+            } finally {
+                SDFSImpl.this.release(this);
+            }
+        }
+
+        @Override
+        public void abort() throws IOException {
+            try {
+                try {
+                    deleteTmp("content");
+                } finally {
+                    deleteTmp("meta");
+                }
             } finally {
                 SDFSImpl.this.release(this);
             }

@@ -23,6 +23,8 @@ public interface SDFS {
 
         void release() throws IOException;
 
+        void abort() throws IOException;
+
     }
 
     interface Get {
