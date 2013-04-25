@@ -72,6 +72,10 @@ public class Protocol {
         return "prohibited";
     }
 
+    public String unavailable() {
+        return "unavailable";
+    }
+
     public String encodeRight(Right right) {
         StringBuilder s = new StringBuilder();
         s.append(encodeAccessType(right.accessType));

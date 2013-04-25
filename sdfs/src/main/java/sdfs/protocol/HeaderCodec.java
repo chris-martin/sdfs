@@ -26,6 +26,7 @@ public class HeaderCodec extends MessageToMessageCodec<String, Header> {
             .put(Header.Get.class, protocol.get())
             .put(Header.Prohibited.class, protocol.prohibited())
             .put(Header.Put.class, protocol.put())
+            .put(Header.Unavailable.class, protocol.unavailable())
             .build();
 
     @Override
