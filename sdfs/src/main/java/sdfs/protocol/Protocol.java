@@ -116,7 +116,7 @@ public class Protocol {
     }
 
     public HashFunction fileHashFunction() {
-        return Hashing.sha256();
+        return Hashing.sha512();
     }
 
     public BaseEncoding hashEncoding() {
