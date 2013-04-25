@@ -18,7 +18,7 @@ import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.HeaderCodec;
 import sdfs.protocol.Protocol;
 import sdfs.sdfs.SDFS;
-import sdfs.ssl.Ssl;
+import sdfs.crypto.Crypto;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -33,9 +33,9 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private final Protocol protocol = new Protocol();
 
-    public ServerInitializer(Ssl ssl, SDFS sdfs) {
-        sslContext = ssl.newContext();
-        fileHashCipher = ssl.unlockedBlockCipher();
+    public ServerInitializer(Crypto crypto, SDFS sdfs) {
+        sslContext = crypto.newSslContext();
+        fileHashCipher = crypto.unlockedBlockCipher();
         this.sdfs = sdfs;
     }
 

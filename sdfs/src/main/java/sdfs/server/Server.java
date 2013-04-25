@@ -7,7 +7,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import sdfs.sdfs.SDFS;
 import sdfs.sdfs.SDFSImpl;
-import sdfs.ssl.Ssl;
+import sdfs.crypto.Crypto;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class Server {
 
     public final int port;
-    private final Ssl ssl;
+    private final Crypto crypto;
     private final SDFS sdfs;
 
     private EventLoopGroup bossGroup;
@@ -27,16 +27,16 @@ public class Server {
 
     private boolean started;
 
-    public Server(int port, Ssl ssl, SDFS sdfs) {
+    public Server(int port, Crypto crypto, SDFS sdfs) {
         this.port = port;
-        this.ssl = ssl;
+        this.crypto = crypto;
         this.sdfs = sdfs;
     }
 
     public static Server fromConfig(Config config) {
         return new Server(
             config.getInt("sdfs.port"),
-            new Ssl(config),
+            new Crypto(config),
             SDFSImpl.fromConfig(config)
         );
     }
@@ -76,7 +76,7 @@ public class Server {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(ssl, sdfs));
+                    .childHandler(new ServerInitializer(crypto, sdfs));
 
             bootstrap.bind(port).sync().channel().closeFuture().sync();
         } catch (InterruptedException ignored) {

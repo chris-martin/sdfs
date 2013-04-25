@@ -15,7 +15,7 @@ import sdfs.CN;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
 import sdfs.sdfs.Right;
-import sdfs.ssl.Ssl;
+import sdfs.crypto.Crypto;
 import sdfs.store.ByteStore;
 import sdfs.store.FileStore;
 
@@ -29,7 +29,7 @@ public class Client {
 
     public final String host;
     public final int port;
-    private final Ssl ssl;
+    private final Crypto crypto;
 
     private final ByteStore store;
 
@@ -38,10 +38,10 @@ public class Client {
     private EventLoopGroup group;
     private Channel channel;
 
-    public Client(String host, int port, Ssl ssl, ByteStore store) {
+    public Client(String host, int port, Crypto crypto, ByteStore store) {
         this.host = host;
         this.port = port;
-        this.ssl = ssl;
+        this.crypto = crypto;
         this.store = store;
     }
 
@@ -49,7 +49,7 @@ public class Client {
         return new Client(
             config.getString("sdfs.host"),
             config.getInt("sdfs.port"),
-            new Ssl(config),
+            new Crypto(config),
             new FileStore(new File(config.getString("sdfs.client-store-path")).toPath())
         );
     }
@@ -63,7 +63,7 @@ public class Client {
             Bootstrap bootstrap = new Bootstrap()
                     .group(group)
                     .channel(NioSocketChannel.class)
-                    .handler(new ClientInitializer(ssl.newContext(), store));
+                    .handler(new ClientInitializer(crypto.newSslContext(), store));
 
             channel = bootstrap.connect(host, port).sync().channel();
         } catch (InterruptedException ignored) {

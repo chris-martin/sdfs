@@ -1,4 +1,4 @@
-package sdfs.ssl;
+package sdfs.crypto;
 
 import com.typesafe.config.Config;
 import sdfs.crypto.Rsa;
@@ -16,15 +16,15 @@ import java.security.PublicKey;
 
 import static java.util.Objects.requireNonNull;
 
-public class Ssl {
+public class Crypto {
 
     private final Config config;
 
-    public Ssl(Config config) {
+    public Crypto(Config config) {
         this.config = config;
     }
 
-    public SSLContext newContext() {
+    public SSLContext newSslContext() {
         try {
             SSLContext context = SSLContext.getInstance(config.getString("sdfs.protocol"));
             context.init(keyManagers(), trustManagers(), null);
