@@ -11,8 +11,6 @@ import org.jboss.netty.handler.stream.ChunkedWriteHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.protocol.HeaderCodec;
-import sdfs.protocol.HeaderDecoder;
-import sdfs.protocol.HeaderEncoder;
 import sdfs.protocol.Protocol;
 import sdfs.store.ByteStore;
 
@@ -53,8 +51,8 @@ public class ClientPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("stringEncoder", new StringEncoder(protocol.headerCharset()));
 
         HeaderCodec headerCodec = new HeaderCodec(protocol);
-        pipeline.addLast("headerDecoder", new HeaderDecoder(headerCodec));
-        pipeline.addLast("headerEncoder", new HeaderEncoder(headerCodec));
+        pipeline.addLast("headerDecoder", headerCodec.decoder());
+        pipeline.addLast("headerEncoder", headerCodec.encoder());
 
         pipeline.addLast("client", new ClientHandler(store));
 

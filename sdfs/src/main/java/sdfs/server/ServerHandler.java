@@ -1,5 +1,6 @@
 package sdfs.server;
 
+import com.google.common.base.Joiner;
 import com.google.common.hash.HashCodes;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -18,6 +19,7 @@ import sdfs.sdfs.Right;
 import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLSession;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -61,20 +63,32 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
         });
     }
 
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent event) throws Exception {
+    public void messageReceived(final ChannelHandlerContext ctx, MessageEvent event) throws Exception {
         Object msg = event.getMessage();
-        if (!(msg instanceof Header)) {
+        if (msg instanceof Header) {
+            ((Header) msg).accept(new HeaderHandler(ctx));
+        } else {
             super.messageReceived(ctx, event);
-            return;
+        }
+    }
+
+    private final class HeaderHandler implements Header.Visitor {
+        private final ChannelHandlerContext ctx;
+        private HeaderHandler(ChannelHandlerContext ctx) { this.ctx = ctx; }
+
+        public void visit(Header.Bye bye) {
+            ctx.getChannel().close();
         }
 
-        Header header = (Header) msg;
+        public void visit(Header.Prohibited prohibited) {
+            throw new ProtocolException("Client cannot sent prohibited header to server");
+        }
 
-        if (header instanceof Header.Bye) {
-            ctx.getChannel().close();
-        } else if (header instanceof Header.Put) {
-            final Header.Put put = (Header.Put) header;
+        public void visit(Header.Unavailable unavailable) {
+            throw new ProtocolException("Client cannot sent unavailable header to server");
+        }
 
+        public void visit(Header.Put put) throws IOException {
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
             SDFS.Put sdfsPut = null;
@@ -105,9 +119,9 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             if (sdfsPut != null) {
                 handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
             }
-        } else if (header instanceof Header.Get) {
-            Header.Get get = (Header.Get) header;
+        }
 
+        public void visit(Header.Get get) throws IOException {
             SDFS.Get sdfsGet;
             try {
                 sdfsGet = sdfs.get(client, get.filename);
@@ -129,7 +143,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             log.info("Sending file `{}' ({} bytes) to {}", get.filename, fileMetaData.size, client);
 
             Header.Put put = new Header.Put();
-            put.correlationId = header.correlationId;
+            put.correlationId = get.correlationId;
             put.filename = get.filename;
             put.hash = HashCodes.fromBytes(fileHash);
             put.size = fileMetaData.size;
@@ -139,17 +153,15 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             fileContent = cipherStreamFactory.decrypt(fileContent, fileHash);
 
             ctx.getChannel().write(new ChunkedStream(fileContent)).addListener(new FinishGet(fileContent, sdfsGet));
-        } else if (header instanceof Header.Delegate) {
-            Header.Delegate delegate = (Header.Delegate) header;
+        }
 
+        public void visit(Header.Delegate delegate) {
             log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
-                    delegate.rights, delegate.filename, client, delegate.to, delegate.expiration);
+                    Joiner.on(", ").join(delegate.rights), delegate.filename, client, delegate.to, delegate.expiration);
 
             for (Right right : delegate.rights) {
                 sdfs.delegate(client, delegate.to, delegate.filename, right, delegate.expiration);
             }
-        } else {
-            throw new ProtocolException("Invalid header");
         }
     }
 

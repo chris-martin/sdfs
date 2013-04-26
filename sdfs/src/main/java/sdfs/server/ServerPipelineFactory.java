@@ -14,8 +14,6 @@ import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.Crypto;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.HeaderCodec;
-import sdfs.protocol.HeaderDecoder;
-import sdfs.protocol.HeaderEncoder;
 import sdfs.protocol.Protocol;
 import sdfs.sdfs.SDFS;
 
@@ -61,8 +59,8 @@ class ServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("stringEncoder", new StringEncoder(protocol.headerCharset()));
 
         HeaderCodec headerCodec = new HeaderCodec(protocol);
-        pipeline.addLast("headerDecoder", new HeaderDecoder(headerCodec));
-        pipeline.addLast("headerEncoder", new HeaderEncoder(headerCodec));
+        pipeline.addLast("headerDecoder", headerCodec.decoder());
+        pipeline.addLast("headerEncoder", headerCodec.encoder());
 
         pipeline.addLast("server", new ServerHandler(sdfs, fileHashCipher, cipherStreamFactory));
 

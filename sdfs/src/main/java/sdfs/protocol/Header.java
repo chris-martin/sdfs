@@ -5,7 +5,7 @@ import org.joda.time.Instant;
 import sdfs.CN;
 import sdfs.sdfs.Right;
 
-public class Header {
+public abstract class Header {
 
     public CorrelationId correlationId;
 
@@ -13,9 +13,11 @@ public class Header {
         correlationId = request.correlationId;
     }
 
-    public static class Bye extends Header { }
+    public static class Bye extends Header {
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
 
-    static class File extends Header {
+    static abstract class File extends Header {
         public String filename;
 
         protected void respondsTo(File request) {
@@ -24,7 +26,9 @@ public class Header {
         }
     }
 
-    public static class Prohibited extends File { }
+    public static class Prohibited extends File {
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
 
     public static Prohibited prohibited(File request) {
         Prohibited prohibited = new Prohibited();
@@ -32,7 +36,9 @@ public class Header {
         return prohibited;
     }
 
-    public static class Unavailable extends File { }
+    public static class Unavailable extends File {
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
 
     public static Unavailable unavailable(File request) {
         Unavailable unavailable = new Unavailable();
@@ -40,16 +46,33 @@ public class Header {
         return unavailable;
     }
 
-    public static class Get extends File { }
+    public static class Get extends File {
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
 
     public static class Put extends File {
         public HashCode hash;
         public long size;
+
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
     }
 
     public static class Delegate extends File {
         public CN to;
         public Iterable<Right> rights;
         public Instant expiration;
+
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
+
+    public abstract void accept(Visitor visitor) throws Exception;
+
+    public interface Visitor {
+        void visit(Bye bye) throws Exception;
+        void visit(Prohibited prohibited) throws Exception;
+        void visit(Unavailable unavailable) throws Exception;
+        void visit(Get get) throws Exception;
+        void visit(Put put) throws Exception;
+        void visit(Delegate delegate) throws Exception;
     }
 }
