@@ -35,7 +35,7 @@ public class Protocol {
     }
 
     private String endHeader() {
-        return "\n-----END HEADER-----";
+        return "\n\n";
     }
 
     public ChannelBuffer headerDelimiter() {
@@ -44,7 +44,7 @@ public class Protocol {
     private final ChannelBuffer headerDelimiter = ChannelBuffers.copiedBuffer(endHeader(), headerCharset());
 
     public int maxHeaderLength() {
-        return 65536;
+        return 8192;
     }
 
     public Charset headerCharset() {
@@ -143,6 +143,6 @@ public class Protocol {
     }
 
     public BaseEncoding hashEncoding() {
-        return BaseEncoding.base16().lowerCase();
+        return BaseEncoding.base64().lowerCase();
     }
 }
