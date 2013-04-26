@@ -1,24 +1,49 @@
 import sbt._
 import sbt.Keys._
-import sbt.Tests.Setup
 
 object Build extends sbt.Build {
 
-  lazy val root = Project(
-    id = "root",
-    base = file(".")
-  ).settings({
-    baseSettings
-  }: _*).aggregate(
-    sdfs,
-    report
-  )
+  def project(id: String, base: String = null)(settings: Settings): Project = {
+    Project(id = id, base = file(Option(base).getOrElse(id))).settings(settings: _*)
+  }
 
-  lazy val sdfs = Project(
-    id = "sdfs",
-    base = file("sdfs")
-  ).settings({
-    baseSettings ++ junitSettings ++ assemblySettings ++ findbugsSettings ++ Seq(
+  def ls(f: File): Seq[File] = {
+    val these = f.listFiles
+    these ++ these.filter(_.isDirectory).flatMap(ls)
+  }
+
+  lazy val root = project("root", ".") {
+    val turninTask = TaskKey[File]("turnin")
+    baseSettings ++ Seq(
+      turninTask <<= (baseDirectory, target, streams) map {
+        (base: File, target: File, streams: TaskStreams) => {
+          val zip: File = target / "sdfs-francis-martin.zip"
+          val inputs: Seq[(File, String)] =
+            Seq(
+              (base / "README.md", "README.md"),
+              (base / "AUTHORS.md", "AUTHORS.md"),
+              (base / "report/target/sdfs.pdf", "report.pdf")
+            ) ++
+            ls(base / "pki").map { file =>
+              (file, "source/" + file.relativeTo(base).get.toPath)
+            } ++
+            (base / "project").listFiles.map { file =>
+              (file, "source/" + file.relativeTo(base).get.toPath)
+            } ++
+            ls(base / "sdfs/src").map { file =>
+              (file, "source/" + file.relativeTo(base).get.toPath)
+            }
+          println(inputs.mkString("\n"))
+          IO.delete(zip)
+          IO.zip(inputs, zip)
+          zip: File
+        }
+      }
+    )
+  }.aggregate(sdfs, report)
+
+  lazy val sdfs = project("sdfs") {
+    baseSettings ++ Seq(
       javacOptions ++= Seq(
         "-source", "1.7",
         "-target", "1.7"
@@ -38,15 +63,43 @@ object Build extends sbt.Build {
       libraryDependencies ++= Seq(
         "org.mockito" % "mockito-all" % "1.9.5"
       ) map (_ % "test")
-    )
-  }: _*)
+    ) ++ {
+      import sbt.Tests.Setup
+      val framework = new TestFramework("com.dadrox.sbt.junit.JunitFramework")
+      Seq(
+        testFrameworks += framework,
+        testOptions in Test ++= Seq(
+          Tests.Argument(framework, "-vo", "-tv"),
+          Setup( cl =>
+            cl.loadClass("sdfs.TestLogConfiguration").getMethod("configureLogging").invoke(null)
+          )
+        ),
+        libraryDependencies ++= Seq(
+          "junit" % "junit" % "4.11",
+          "com.dadrox" %% "sbt-junit" % "0.1"
+        ) map (_ % "test")
+      )
+    } ++ {
+      import de.johoop.findbugs4sbt.FindBugs, FindBugs._
+      import de.johoop.findbugs4sbt.ReportType._
+      FindBugs.findbugsSettings ++ Seq(
+        findbugsReportType := Html,
+        findbugsReportName := "findbugs.html"
+      )
+    } ++ {
+      import sbtassembly.Plugin, Plugin._
+      import AssemblyKeys._
+      Plugin.assemblySettings ++ Seq(
+        jarName in assembly := "sdfs.jar",
+        assembleArtifact in packageScala := false
+      )
+    }
+  }
 
-  lazy val report = Project(
-    id = "report",
-    base = file("report")
-  ).settings({
+  lazy val report = project("report") {
+    val latexTask = TaskKey[File]("latex")
     baseSettings ++ Seq(
-      TaskKey[File]("latex") <<= (baseDirectory, target, streams) map {
+      latexTask <<= (baseDirectory, target, streams) map {
         (baseDirectory: File, target: File, streams: TaskStreams) => {
           Process(
             Seq("latexmk", "-g", "-pdf", (baseDirectory / "src/main/latex/sdfs").getAbsolutePath),
@@ -58,54 +111,20 @@ object Build extends sbt.Build {
           target / "sdfs.pdf"
         }
       },
-      watchSources <<= (baseDirectory) map {
+      watchSources <<= baseDirectory map {
         (baseDirectory: File) => {
           Seq(baseDirectory / "src/main/latex")
         }
-      }
+      },
+      compile <<= (compile in Compile) dependsOn latexTask
     )
-  }: _*)
-
-  type Settings = Seq[Setting[_]]
+  }
 
   lazy val baseSettings: Settings = Seq(
     organization := "sdfs",
     version := "1.0-SNAPSHOT"
   )
 
-  lazy val assemblySettings: Settings = {
-    import sbtassembly.Plugin, Plugin._
-    import AssemblyKeys._
-    Plugin.assemblySettings ++ Seq(
-      jarName in assembly := "sdfs.jar",
-      assembleArtifact in packageScala := false
-    )
-  }
-
-  lazy val findbugsSettings: Settings = {
-    import de.johoop.findbugs4sbt.FindBugs, FindBugs._
-    import de.johoop.findbugs4sbt.ReportType._
-    FindBugs.findbugsSettings ++ Seq(
-      findbugsReportType := Html,
-      findbugsReportName := "findbugs.html"
-    )
-  }
-
-  lazy val junitSettings: Settings = {
-    val framework = new TestFramework("com.dadrox.sbt.junit.JunitFramework")
-    Seq(
-      testFrameworks += framework,
-      testOptions in Test ++= Seq(
-        Tests.Argument(framework, "-vo", "-tv"),
-        Setup( cl =>
-          cl.loadClass("sdfs.TestLogConfiguration").getMethod("configureLogging").invoke(null)
-        )
-      ),
-      libraryDependencies ++= Seq(
-        "junit" % "junit" % "4.11",
-        "com.dadrox" %% "sbt-junit" % "0.1"
-      ) map (_ % "test")
-    )
-  }
+  type Settings = Seq[Setting[_]]
 
 }
