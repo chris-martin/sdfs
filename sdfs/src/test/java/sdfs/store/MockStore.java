@@ -65,6 +65,8 @@ public class MockStore implements StringStore, ByteStore, PathManipulator {
         };
     }
 
+
+
     public void move(Path source, Path target) throws IOException {
         files.put(target, files.remove(source));
     }
@@ -74,6 +76,7 @@ public class MockStore implements StringStore, ByteStore, PathManipulator {
         files.remove(path);
     }
 
+    @Override
     public boolean exists(Path path) {
         return files.containsKey(path);
     }

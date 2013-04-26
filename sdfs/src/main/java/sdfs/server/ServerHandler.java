@@ -13,21 +13,22 @@ import sdfs.CN;
 import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
-import sdfs.sdfs.AccessControlException;
-import sdfs.sdfs.ResourceUnavailableException;
-import sdfs.sdfs.Right;
-import sdfs.sdfs.SDFS;
+import sdfs.sdfs.*;
 
 import javax.net.ssl.SSLSession;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.SecureRandom;
+import java.util.Random;
 
 import static com.google.common.base.Preconditions.checkState;
 
 public class ServerHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
+
+    private final Random random = new SecureRandom();
 
     private final Protocol protocol = new Protocol();
     private final SDFS sdfs;
@@ -88,6 +89,11 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             throw new ProtocolException("Client cannot sent unavailable header to server");
         }
 
+        @Override
+        public void visit(Header.Nonexistent nonexistent) throws Exception {
+            throw new ProtocolException("Client cannot sent nonexistent header to server");
+        }
+
         public void visit(Header.Put put) throws IOException {
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
@@ -125,6 +131,9 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             SDFS.Get sdfsGet;
             try {
                 sdfsGet = sdfs.get(client, get.filename);
+            } catch (ResourceNonexistentException e) {
+                ctx.getChannel().write(Header.nonexistent(get));
+                return;
             } catch (ResourceUnavailableException e) {
                 ctx.getChannel().write(Header.unavailable(get));
                 return;
@@ -160,7 +169,15 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
                     Joiner.on(", ").join(delegate.rights), delegate.filename, client, delegate.to, delegate.expiration);
 
             for (Right right : delegate.rights) {
-                sdfs.delegate(client, delegate.to, delegate.filename, right, delegate.expiration);
+                try {
+                    sdfs.delegate(client, delegate.to, delegate.filename, right, delegate.expiration);
+                } catch (AccessControlException e) {
+                    ctx.getChannel().write(Header.prohibited(delegate));
+                    return;
+                } catch (ResourceNonexistentException e) {
+                    ctx.getChannel().write(Header.nonexistent(delegate));
+                    return;
+                }
             }
         }
     }

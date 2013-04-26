@@ -46,7 +46,7 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
 
         path = path(path);
 
-        if (!path.toFile().exists()) {
+        if (!java.nio.file.Files.exists(path)) {
             return null;
         }
 
@@ -86,13 +86,12 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
         }
     }
 
-    @Override
     public void delete(Path path) throws IOException {
         java.nio.file.Files.deleteIfExists(path(path));
     }
 
     public boolean exists(Path path) {
-        return java.nio.file.Files.exists(path);
+        return java.nio.file.Files.exists(path(path));
     }
 
 }

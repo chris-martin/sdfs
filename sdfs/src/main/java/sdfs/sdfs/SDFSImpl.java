@@ -64,6 +64,10 @@ public class SDFSImpl implements SDFS {
             throw new ResourceUnavailableException("Cannot read; file is currently being written");
         }
 
+        if (!pathManipulator.exists(resourcePath(resourceName))) {
+            throw new ResourceNonexistentException();
+        }
+
         if (!policyStore.hasAccess(cn, resourceName, AccessType.Get)) {
             throw new AccessControlException();
         }
@@ -85,7 +89,7 @@ public class SDFSImpl implements SDFS {
             throw new ResourceUnavailableException("Cannot write; file is currently being read");
         }
 
-        if (!pathManipulator.exists(new File(resourceName).toPath().resolve("meta"))) {
+        if (!pathManipulator.exists(resourcePath(resourceName).resolve("meta"))) {
             policyStore.grantOwner(cn, resourceName);
         }
 
@@ -99,6 +103,10 @@ public class SDFSImpl implements SDFS {
     }
 
     public synchronized void delegate(CN from, CN to, String resourceName, Right right, Instant expiration) {
+
+        if (!pathManipulator.exists(resourcePath(resourceName))) {
+            throw new ResourceNonexistentException();
+        }
 
         policyStore.delegate(from, to, resourceName, right, expiration);
 
@@ -119,6 +127,10 @@ public class SDFSImpl implements SDFS {
         locks.remove(put.resourceName);
     }
 
+    private Path resourcePath(String resourceName) {
+        return new File(resourceName).toPath();
+    }
+
     private abstract class Operation {
 
         final String resourceName;
@@ -128,7 +140,7 @@ public class SDFSImpl implements SDFS {
         }
 
         Path path() {
-            return new File(resourceName).toPath();
+            return resourcePath(resourceName);
         }
 
     }

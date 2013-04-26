@@ -79,6 +79,10 @@ public class Protocol {
         return "unavailable";
     }
 
+    public String nonexistent() {
+        return "nonexistent";
+    }
+
     public String encodeRights(Iterable<Right> rights) {
         return Joiner.on(" ").join(FluentIterable.from(rights).transform(new Function<Right, Object>() {
             public String apply(Right right) {

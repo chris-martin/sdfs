@@ -60,13 +60,16 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         }
 
         public void visit(Header.Prohibited prohibited) {
-            log.info("Request {} re file `{}' prohibited", prohibited.correlationId, prohibited.filename);
             System.out.println("`" + prohibited.filename + "' permission denied.");
         }
 
         public void visit(Header.Unavailable unavailable) {
-            log.info("File `{}' unavailable", unavailable.correlationId, unavailable.filename);
             System.out.println("`" + unavailable.filename + "' currently unavailable. Please try again.");
+        }
+
+        @Override
+        public void visit(Header.Nonexistent nonexistent) throws Exception {
+            System.out.println("`" + nonexistent.filename + "' does not exist.");
         }
 
         public void visit(Header.Get get) {

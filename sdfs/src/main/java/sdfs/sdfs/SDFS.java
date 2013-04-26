@@ -9,11 +9,14 @@ import java.io.IOException;
 
 public interface SDFS {
 
-    Get get(CN cn, String resourceName);
+    Get get(CN cn, String resourceName)
+            throws AccessControlException, ResourceNonexistentException, ResourceUnavailableException;
 
-    Put put(CN cn, String resourceName);
+    Put put(CN cn, String resourceName)
+            throws AccessControlException, ResourceUnavailableException;
 
-    void delegate(CN from, CN to, String resourceName, Right right, Instant expiration);
+    void delegate(CN from, CN to, String resourceName, Right right, Instant expiration)
+            throws AccessControlException, ResourceNonexistentException;
 
     interface Put {
 
