@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
+import org.apache.commons.io.FileUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,8 @@ public class InboundFile {
     }
 
     void close() throws IOException {
-        log.info("Received file ({} bytes) in {} ({} bps)", size, stopwatch.stop(), size/(double)(stopwatch.elapsed(TimeUnit.SECONDS)));
+        log.info("Received file ({} bytes) in {} ({}/s)", size, stopwatch.stop(),
+                FileUtils.byteCountToDisplaySize(Math.round(size / (stopwatch.elapsed(TimeUnit.NANOSECONDS)/1e9))));
         dest.flush();
         dest.close();
         checkHashMatches();

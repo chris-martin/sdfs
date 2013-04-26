@@ -34,6 +34,7 @@ object Build extends sbt.Build {
       ),
       libraryDependencies ++= Seq(
         "com.google.guava" % "guava" % "14.0.1",
+        "commons-io" % "commons-io" % "2.4",
         "net.sourceforge.argparse4j" % "argparse4j" % "0.3.2",
         "org.scala-lang" % "jline" % "2.10.0" exclude("org.fusesource.jansi", "jansi"),
         "com.google.code.findbugs" % "jsr305" % "2.0.1",
