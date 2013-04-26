@@ -67,6 +67,15 @@ public class Console {
 
             execute(ImmutableList.copyOf(commandSplitter.split(line)));
         }
+
+        if (client != null) {
+            client.disconnect();
+            client = null;
+        }
+        if (server != null) {
+            server.stop();
+            server = null;
+        }
     }
 
     void stop() {
@@ -191,7 +200,6 @@ public class Console {
                     System.out.println("Stopping server...");
                     server.stop();
                     server = null;
-                    System.out.println("Server stopped.");
                 }
             } else if (server != null) {
                 System.out.println("Server already started.");
@@ -224,14 +232,14 @@ public class Console {
             } else {
                 try {
                     client = Client.fromConfig(config);
-                    System.out.println("Connecting to " + client.serverAddr + "...");
+                    System.out.println("Client connecting to " + client.serverAddr + "...");
                     client.connect(new Runnable() {
                         public void run() {
-                            System.out.println("Disconnected from " + client.serverAddr + ".");
+                            System.out.println("Client disconnected from " + client.serverAddr + ".");
                             client = null;
                         }
                     });
-                    System.out.println("Connected to " + client.serverAddr + ".");
+                    System.out.println("Client connected to " + client.serverAddr + ".");
                 } catch (Exception e) {
                     System.out.println("Error: " + Throwables.getStackTraceAsString(e));
                     client = null;

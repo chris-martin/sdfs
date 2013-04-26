@@ -74,14 +74,16 @@ public class Client {
             channel = bootstrap.connect(serverAddr).sync().getChannel();
 
             channel.getCloseFuture().addListener(new ChannelFutureListener() {
-                @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     channel = null;
-                    try {
-                        disconnect();
-                    } finally {
-                        onClose.run();
-                    }
+                    onClose.run();
+
+                    // Netty requires releasing of resources to not happen in an I/O thread
+                    new Thread(new Runnable() {
+                        public void run() {
+                            releaseResources();
+                        }
+                    }).start();
                 }
             });
         } catch (InterruptedException ignored) {
@@ -93,7 +95,7 @@ public class Client {
         }
     }
 
-    public void get(String filename) {
+    public synchronized void get(String filename) {
         checkState(channel != null);
 
         Header.Get get = new Header.Get();
@@ -101,7 +103,7 @@ public class Client {
         channel.write(get);
     }
 
-    public void put(String filename) {
+    public synchronized void put(String filename) {
         checkState(channel != null);
 
         ByteSource file = store.get(new File(filename).toPath());
@@ -137,14 +139,14 @@ public class Client {
         }
     }
 
-    public void delegate(CN to, String filename, Iterable<Right> rights, Duration duration) {
+    public synchronized void delegate(CN to, String filename, Iterable<Right> rights, Duration duration) {
         checkState(channel != null);
 
         Header.Delegate delegate = new Header.Delegate();
         delegate.filename = filename;
         delegate.to = to;
         delegate.rights = ImmutableList.copyOf(rights);
-        delegate.expiration = Instant.now().plus(duration); // TODO use Chronos
+        delegate.expiration = Instant.now().plus(duration);
 
         channel.write(delegate);
     }
@@ -159,6 +161,10 @@ public class Client {
             channel = null;
         }
 
+        releaseResources();
+    }
+
+    private synchronized void releaseResources() {
         if (bootstrap != null) {
             bootstrap.releaseExternalResources();
             bootstrap = null;

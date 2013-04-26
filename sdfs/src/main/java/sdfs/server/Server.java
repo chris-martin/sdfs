@@ -81,6 +81,7 @@ public class Server {
         }
 
         bootstrap.releaseExternalResources();
+        System.out.println("Server stopped.");
     }
 
 
