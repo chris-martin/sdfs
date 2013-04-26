@@ -225,7 +225,12 @@ public class Console {
                 try {
                     client = Client.fromConfig(config);
                     System.out.println("Connecting to " + client.serverAddr + "...");
-                    client.connect();
+                    client.connect(new Runnable() {
+                        public void run() {
+                            System.out.println("Disconnected from " + client.serverAddr + ".");
+                            client = null;
+                        }
+                    });
                     System.out.println("Connected to " + client.serverAddr + ".");
                 } catch (Exception e) {
                     System.out.println("Error: " + Throwables.getStackTraceAsString(e));

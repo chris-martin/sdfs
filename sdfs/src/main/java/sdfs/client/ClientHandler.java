@@ -4,6 +4,7 @@ import org.jboss.netty.channel.*;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sdfs.Output;
 import sdfs.protocol.*;
 import sdfs.store.ByteStore;
 
@@ -48,13 +49,26 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
             ctx.getChannel().close();
         }
 
-        public void visit(Header.Put put) throws IOException {
-            InboundFile inboundFile = new InboundFile(
+        public void visit(final Header.Put put) throws IOException {
+            final InboundFile inboundFile = new InboundFile(
                     store.put(new File(put.filename).toPath()).openBufferedStream(),
                     put.size, protocol.fileHashFunction(),
                     put.hash
             );
-            ctx.getPipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
+            InboundFileHandler inboundFileHandler = new InboundFileHandler(inboundFile);
+            ctx.getPipeline().addBefore("framer", "inboundFile", inboundFileHandler);
+            inboundFileHandler.transferFuture().addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isSuccess()) {
+                        System.out.printf("Got `%s' (%s) in %s (%s).\n",
+                                put.filename, Output.transferSize(inboundFile.size),
+                                inboundFile.transferTime(), inboundFile.transferRate());
+                    } else {
+                        System.out.printf("Failed to get `%s'.\n", put.filename);
+                    }
+                }
+            });
 
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);
         }

@@ -7,6 +7,8 @@ import com.google.common.io.ByteSource;
 import com.typesafe.config.Config;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.stream.ChunkedStream;
 import org.joda.time.Duration;
@@ -14,6 +16,7 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
+import sdfs.Output;
 import sdfs.crypto.Crypto;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
@@ -57,7 +60,7 @@ public class Client {
         );
     }
 
-    public synchronized void connect() throws ConnectException {
+    public synchronized void connect(final Runnable onClose) throws ConnectException {
         checkState(bootstrap == null);
 
         try {
@@ -69,6 +72,18 @@ public class Client {
             bootstrap.setPipelineFactory(new ClientPipelineFactory(protocol, crypto.newSslContext(), store));
 
             channel = bootstrap.connect(serverAddr).sync().getChannel();
+
+            channel.getCloseFuture().addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    channel = null;
+                    try {
+                        disconnect();
+                    } finally {
+                        onClose.run();
+                    }
+                }
+            });
         } catch (InterruptedException ignored) {
             disconnect();
         } catch (Throwable e) {
@@ -91,19 +106,32 @@ public class Client {
 
         ByteSource file = store.get(new File(filename).toPath());
         try {
-            Header.Put put = new Header.Put();
+            final Header.Put put = new Header.Put();
             put.filename = filename;
 
             log.debug("Calculating hash");
-            Stopwatch stopwatch = new Stopwatch().start();
+            final Stopwatch stopwatch = new Stopwatch().start();
             put.hash = file.hash(protocol.fileHashFunction());
             log.debug("Hashed file in {}", stopwatch.stop());
 
             put.size = file.size();
             channel.write(put);
 
+            stopwatch.reset().start();
             log.debug("Writing file contents");
-            channel.write(new ChunkedStream(file.openBufferedStream()));
+            channel.write(new ChunkedStream(file.openBufferedStream())).addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    stopwatch.stop();
+                    if (future.isSuccess()) {
+                        System.out.printf("Put `%s' (%s) in %s (%s).\n",
+                                put.filename, Output.transferSize(put.size),
+                                stopwatch.toString(), Output.transferRate(put.size, stopwatch));
+                    } else {
+                        System.out.printf("Failed to put `%s'.", put.filename);
+                    }
+                }
+            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -122,18 +150,19 @@ public class Client {
     }
 
     public synchronized void disconnect() {
-        if (bootstrap == null) return;
-
         if (channel != null) {
             try {
                 channel.write(new Header.Bye()).sync().getChannel().getCloseFuture().sync();
             } catch (Exception e) {
                 log.debug("Could not close connection gracefully", e);
             }
+            channel = null;
         }
 
-        bootstrap.releaseExternalResources();
-        bootstrap = null;
+        if (bootstrap != null) {
+            bootstrap.releaseExternalResources();
+            bootstrap = null;
+        }
     }
 
     public synchronized String toString() {

@@ -4,15 +4,14 @@ import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
-import org.apache.commons.io.FileUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sdfs.Output;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -37,6 +36,14 @@ public class InboundFile {
         stopwatch = new Stopwatch().start();
     }
 
+    public String transferTime() {
+        return stopwatch.toString();
+    }
+
+    public String transferRate() {
+        return Output.transferRate(size, stopwatch);
+    }
+
     /** Reads from the given input buffer. Returns true iff done receiving the file and hash matches correctly. */
     public boolean read(ChannelBuffer in) throws IOException {
         in.readBytes(dest, in.readableBytes());
@@ -48,10 +55,12 @@ public class InboundFile {
     }
 
     void close() throws IOException {
-        log.info("Received file ({} bytes) in {} ({}/s)", size, stopwatch.stop(),
-                FileUtils.byteCountToDisplaySize(Math.round(size / (stopwatch.elapsed(TimeUnit.NANOSECONDS)/1e9))));
         dest.flush();
         dest.close();
+
+        stopwatch.stop();
+        log.info("Received file ({} bytes) in {} ({})", size, stopwatch, transferRate());
+
         checkHashMatches();
     }
 

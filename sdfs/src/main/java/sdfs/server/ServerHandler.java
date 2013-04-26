@@ -1,6 +1,7 @@
 package sdfs.server;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCodes;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -10,6 +11,7 @@ import org.jboss.netty.handler.stream.ChunkedStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
+import sdfs.Output;
 import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
@@ -94,7 +96,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             throw new ProtocolException("Client cannot sent nonexistent header to server");
         }
 
-        public void visit(Header.Put put) throws IOException {
+        public void visit(final Header.Put put) throws IOException {
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
             SDFS.Put sdfsPut = null;
@@ -121,6 +123,18 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
 
             InboundFileHandler handler = new InboundFileHandler(inboundFile);
             ctx.getPipeline().addBefore("framer", "inboundFile", handler);
+            handler.transferFuture().addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isSuccess()) {
+                        System.out.printf("Received `%s' (%s) from `%s' in %s (%s).\n",
+                                put.filename, Output.transferSize(inboundFile.size), client.name,
+                                inboundFile.transferTime(), inboundFile.transferRate());
+                    } else {
+                        System.out.printf("Failed to receive `%s' from `%s'.\n", put.filename, client.name);
+                    }
+                }
+            });
 
             if (sdfsPut != null) {
                 handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
@@ -151,7 +165,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
 
             log.info("Sending file `{}' ({} bytes) to {}", get.filename, fileMetaData.size, client);
 
-            Header.Put put = new Header.Put();
+            final Header.Put put = new Header.Put();
             put.correlationId = get.correlationId;
             put.filename = get.filename;
             put.hash = HashCodes.fromBytes(fileHash);
@@ -161,7 +175,22 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             InputStream fileContent = sdfsGet.contentByteSource().openStream();
             fileContent = cipherStreamFactory.decrypt(fileContent, fileHash);
 
-            ctx.getChannel().write(new ChunkedStream(fileContent)).addListener(new FinishGet(fileContent, sdfsGet));
+            final Stopwatch stopwatch = new Stopwatch().start();
+            ChannelFuture chunkFuture = ctx.getChannel().write(new ChunkedStream(fileContent));
+            chunkFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    stopwatch.stop();
+                    if (future.isSuccess()) {
+                        System.out.printf("Sent `%s' (%d bytes) to `%s' in %s (%s).\n",
+                                put.filename, put.size, client.name,
+                                stopwatch.toString(), Output.transferRate(put.size, stopwatch));
+                    } else {
+                        System.out.printf("Failed to send `%s' to `%s'\n", put.filename, client.name);
+                    }
+                }
+            });
+            chunkFuture.addListener(new FinishGet(fileContent, get, sdfsGet));
         }
 
         public void visit(Header.Delegate delegate) {
@@ -202,9 +231,11 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
                         metaData.writeTo(out);
                     }
                 } finally {
+                    log.debug("Releasing `{}'", put.filename);
                     sdfsPut.release();
                 }
             } else {
+                log.debug("Aborting `{}' put", put.filename);
                 sdfsPut.abort();
             }
         }
@@ -212,10 +243,12 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
 
     private static final class FinishGet implements ChannelFutureListener {
         private final InputStream src;
+        private final Header.Get get;
         private final SDFS.Get sdfsGet;
 
-        private FinishGet(InputStream src, SDFS.Get sdfsGet) {
+        private FinishGet(InputStream src, Header.Get get, SDFS.Get sdfsGet) {
             this.src = src;
+            this.get = get;
             this.sdfsGet = sdfsGet;
         }
 
@@ -223,6 +256,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             try {
                 src.close();
             } finally {
+                log.debug("Releasing `{}'", get.filename);
                 sdfsGet.release();
             }
         }
