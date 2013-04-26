@@ -21,3 +21,6 @@ Commands:
     server stop         Halt the SDFS server
 
     set <key> <value>   Assign the config property sdfs.<key> = <value>
+
+    log                 Enable log output
+    log stop            Disable log output

@@ -37,6 +37,7 @@ public class Console {
     boolean halt;
 
     void run() {
+        LogConfiguration.disableLogging();
         try {
             console = new ConsoleReader();
             console.setHistory(new FileHistory(new File("sdfs.history")));
@@ -149,6 +150,10 @@ public class Console {
             System.out.println(help());
             System.out.println(config());
             System.out.println(status());
+
+        } else if (ImmutableList.of("log").contains(head)) {
+
+            LogConfiguration.setLoggingEnabled(!tail.contains("stop"));
 
         } else if (ImmutableList.of("help").contains(head)) {
 
