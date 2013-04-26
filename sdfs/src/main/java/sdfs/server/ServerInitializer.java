@@ -52,8 +52,8 @@ class ServerInitializer extends ChannelInitializer<SocketChannel> {
 
         pipeline.addLast(new SslHandler(engine));
 
-        pipeline.addLast(new SnappyFramedDecoder());
-        pipeline.addLast(new SnappyFramedEncoder());
+//        pipeline.addLast(new SnappyFramedDecoder());
+//        pipeline.addLast(new SnappyFramedEncoder());
         pipeline.addLast(new ChunkedWriteHandler());
         pipeline.addLast("framer",
                 new DelimiterBasedFrameDecoder(protocol.maxHeaderLength(), protocol.headerDelimiter()));

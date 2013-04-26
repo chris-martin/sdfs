@@ -43,8 +43,8 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel> {
         engine.setUseClientMode(true);
 
         pipeline.addLast(new SslHandler(engine));
-        pipeline.addLast(new SnappyFramedDecoder());
-        pipeline.addLast(new SnappyFramedEncoder());
+//        pipeline.addLast(new SnappyFramedDecoder());
+//        pipeline.addLast(new SnappyFramedEncoder());
         pipeline.addLast(new ChunkedWriteHandler());
         pipeline.addLast("framer",
                 new DelimiterBasedFrameDecoder(protocol.maxHeaderLength(), protocol.headerDelimiter()));
