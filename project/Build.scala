@@ -19,18 +19,9 @@ object Build extends sbt.Build {
         (base: File, target: File, streams: TaskStreams) => {
           val zip: File = target / "sdfs-francis-martin.zip"
           val inputs: Seq[(File, String)] =
-            Seq(
-              (base / "README.md", "README.md"),
-              (base / "AUTHORS.md", "AUTHORS.md"),
-              (base / "report/target/sdfs.pdf", "report.pdf")
-            ) ++
-            ls(base / "pki").map { file =>
-              (file, "source/" + file.relativeTo(base).get.toPath)
-            } ++
-            (base / "project").listFiles.map { file =>
-              (file, "source/" + file.relativeTo(base).get.toPath)
-            } ++
-            ls(base / "sdfs/src").map { file =>
+            Seq("README.md", "AUTHORS.md").map { path => (base / path, path) } ++
+            Seq((base / "report/target/sdfs.pdf", "report.pdf")) ++
+            (ls(base / "pki") ++ (base / "project").listFiles ++ ls(base / "sdfs/src")).map { file =>
               (file, "source/" + file.relativeTo(base).get.toPath)
             }
           println(inputs.mkString("\n"))
