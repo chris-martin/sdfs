@@ -64,7 +64,7 @@ public class SDFSImpl implements SDFS {
             throw new ResourceUnavailableException("Cannot read; file is currently being written");
         }
 
-        if (!pathManipulator.exists(resourcePath(resourceName))) {
+        if (!pathManipulator.exists(resourcePath(resourceName).resolve("meta"))) {
             throw new ResourceNonexistentException();
         }
 
@@ -90,6 +90,16 @@ public class SDFSImpl implements SDFS {
         }
 
         if (!pathManipulator.exists(resourcePath(resourceName).resolve("meta"))) {
+
+            // Clean up anything that might be there already. This could happen in a weird
+            // situation like if a client disconnected while uploading a file for the first
+            // time, after the policy file had been written.
+            try {
+                pathManipulator.delete(resourcePath(resourceName));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
             policyStore.grantOwner(cn, resourceName);
         }
 
