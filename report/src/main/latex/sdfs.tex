@@ -33,7 +33,7 @@
 
 \subsection{Certificates}
 
-Every node has a `pki` directory containing Java key stores:
+Every node has a \texttt{pki} directory containing Java key stores:
 \begin{itemize}
 \item \texttt{ca-certs.jks} - Contains the certificates needed to trust the CA.
 \item \textit{[your-keystore]}\texttt{.jdk} - Contains your cert (signed by the CA) and your private key.
@@ -45,17 +45,65 @@ Similarly to HTTP, each message consists of a header string followed by two newl
 and an optional message body.
 Headers are realitively short (no more than 6 lines), and we impose a maximum header size of 8KB as a sanity check.
 
+\subsubsection{Get}
+
+\textit{Get} messages are sent by clients to request a file.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item ``get''
+\item A new \text{correlation ID}
+\item The name of the file
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+get \\
+e406b811-4826-4ed9-89a3-a41dbf9ca0fe \\
+sas.txt
+}
+\end{quote}
+
 \subsubsection{Put}
 
 \textit{Put} messages are sent by both clients and servers.
 
-The message header consists of:
+\paragraph{Lines of the message header}
 \begin{enumerate}
 \item ``put''
-\item A new \text{correlation id}
+\item A \text{correlation ID}. For a client-to-server message, this is a new ID.
+      For a server-to-client message, this is the ID sent in the \textit{get}
+      message that was used to request this file.
 \item The name of the file
 \item The SHA-512 checksum of the file contents, base 64
 \item The file size in bytes, base 10
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+put \\
+dfd03c22-af62-40d4-86cb-ea43d399cd5c \\
+sas.txt \\
+3DkQJagLJhzzo8JhjKV77CFP \textit{[\ldots]} \\
+706120
+}
+\end{quote}
+
+\subsubsection{Delegate}
+
+\textit{Delegate} messages are send by clients.
+
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item ``delegate''
+\item A new \text{correlation ID}.
+\item The name of the file
+\item The CN of the principal receiving delegated rights
+\item Some non-empty space-delimited combination of ``get'', ``get*'', ``put'', ``put*''
+\item The expiration time of the delegation, as a UNIX timestamp (number of milliseconds since 1970 UTC)
 \end{enumerate}
 
 \paragraph{Example header}
