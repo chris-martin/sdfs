@@ -1,4 +1,4 @@
-\documentclass[10pt,twocolumn]{article}
+\documentclass[10pt]{article}
 \usepackage{abstract}
 \usepackage[hypcap]{caption}
 \usepackage{color}
@@ -29,18 +29,6 @@
 
 \begin{document}
 
-  \thispagestyle{empty}
-
-  \twocolumn[
-  \maketitle
-  \begin{onecolabstract}
-    \begin{quote}\begin{quote}\begin{quote}
-      SDFS is the best filesystem.
-    \end{quote}\end{quote}\end{quote}
-    \vspace{1em}
-  \end{onecolabstract}
-  ]
-
 \section{Protocol}
 
 \subsection{Certificates}
@@ -50,6 +38,36 @@ Every node has a `pki` directory containing Java key stores:
 \item \texttt{ca-certs.jks} - Contains the certificates needed to trust the CA.
 \item \textit{[your-keystore]}\texttt{.jdk} - Contains your cert (signed by the CA) and your private key.
 \end{itemize}
+
+\subsection{Messages}
+
+Similarly to HTTP, each message consists of a header string followed by two newline characters
+and an optional message body.
+Headers are realitively short (no more than 6 lines), and we impose a maximum header size of 8KB as a sanity check.
+
+\subsubsection{Put}
+
+\textit{Put} messages are sent by both clients and servers.
+
+The message header consists of:
+\begin{enumerate}
+\item ``put''
+\item A new \text{correlation id}
+\item The name of the file
+\item The SHA-512 checksum of the file contents, base 64
+\item The file size in bytes, base 10
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+put \\
+dfd03c22-af62-40d4-86cb-ea43d399cd5c \\
+sas.txt \\
+3DkQJagLJhzzo8JhjKV77CFP \textit{[\ldots]} \\
+706120
+}
+\end{quote}
 
 \section{Performance}
 

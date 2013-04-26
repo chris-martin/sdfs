@@ -93,7 +93,7 @@ object Build extends sbt.Build {
       latexTask <<= (baseDirectory, target, streams) map {
         (baseDirectory: File, target: File, streams: TaskStreams) => {
           Process(
-            Seq("latexmk", "-g", "-pdf", (baseDirectory / "src/main/latex/sdfs").getAbsolutePath),
+            Seq("latexmk", "-f", "-g", "-pdf", (baseDirectory / "src/main/latex/sdfs").getAbsolutePath),
             Some(target)
           ) ! streams.log match {
             case 0 => ()
