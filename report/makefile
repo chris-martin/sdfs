@@ -1,0 +1,2 @@
+live:
+	latexmk -pdf -pvc
