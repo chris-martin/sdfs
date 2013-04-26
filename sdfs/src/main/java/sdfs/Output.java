@@ -1,7 +1,9 @@
 package sdfs;
 
 import com.google.common.base.Stopwatch;
-import org.apache.commons.io.FileUtils;
+import org.codeswarm.bytesize.ByteSizeFormat;
+import org.codeswarm.bytesize.ByteSizeFormatBuilder;
+import org.codeswarm.bytesize.ByteSizes;
 
 import java.util.concurrent.TimeUnit;
 
@@ -14,6 +16,7 @@ public class Output {
     }
 
     public static String transferSize(long size) {
-        return FileUtils.byteCountToDisplaySize(size);
+        return byteSizeFormat.format(ByteSizes.byteSize(size), ByteSizeFormat.WordLength.ABBREVIATION);
     }
+    private static final ByteSizeFormat byteSizeFormat = new ByteSizeFormatBuilder().build();
 }
