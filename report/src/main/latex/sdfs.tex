@@ -41,8 +41,16 @@
   \end{onecolabstract}
   ]
 
-\section{What}
+\section{Protocol}
 
-  Yeah.
+\subsection{Certificates}
+
+Every node has a `pki` directory containing Java key stores:
+\begin{itemize}
+\item \texttt{ca-certs.jks} - Contains the certificates needed to trust the CA.
+\item \textit{[your-keystore]}\texttt{.jdk} - Contains your cert (signed by the CA) and your private key.
+\end{itemize}
+
+\section{Performance}
 
 \end{document}
