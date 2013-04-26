@@ -1,9 +1,6 @@
 package sdfs;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Function;
-import com.google.common.base.Splitter;
-import com.google.common.base.Throwables;
+import com.google.common.base.*;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -83,6 +80,10 @@ public class Console {
                 ).transform(new Function<String, String>() {
                     public String apply(String x) {
                         return x.trim();
+                    }
+                }).filter(new Predicate<String>() {
+                    public boolean apply(String x) {
+                        return !x.isEmpty();
                     }
                 })
                 .toList()
