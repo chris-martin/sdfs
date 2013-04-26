@@ -39,7 +39,7 @@ object Build extends sbt.Build {
         "com.google.code.findbugs" % "jsr305" % "2.0.1",
         "ch.qos.logback" % "logback-classic" % "1.0.9",
         "com.typesafe" % "config" % "1.0.0",
-        "io.netty" % "netty-all" % "4.0.0.CR1",
+        "io.netty" % "netty" % "3.6.5.Final",
         "joda-time" % "joda-time" % "2.2",
         "javax.inject" % "javax.inject" % "1"
       ),

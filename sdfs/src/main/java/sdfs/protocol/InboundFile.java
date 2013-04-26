@@ -4,13 +4,14 @@ import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
-import io.netty.buffer.ByteBuf;
+import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -36,7 +37,7 @@ public class InboundFile {
     }
 
     /** Reads from the given input buffer. Returns true iff done receiving the file and hash matches correctly. */
-    public boolean read(ByteBuf in) throws IOException {
+    public boolean read(ChannelBuffer in) throws IOException {
         in.readBytes(dest, in.readableBytes());
         if (count == size) {
             close();
@@ -46,7 +47,7 @@ public class InboundFile {
     }
 
     void close() throws IOException {
-        log.info("Received file ({} bytes) in {}", size, stopwatch.stop());
+        log.info("Received file ({} bytes) in {} ({} bps)", size, stopwatch.stop(), size/(double)(stopwatch.elapsed(TimeUnit.SECONDS)));
         dest.flush();
         dest.close();
         checkHashMatches();

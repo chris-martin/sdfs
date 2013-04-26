@@ -1,63 +1,55 @@
 package sdfs.protocol;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundByteHandlerAdapter;
-import io.netty.channel.ChannelPromise;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.channel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.OutputStream;
 
-public class InboundFileHandler extends ChannelInboundByteHandlerAdapter {
+public class InboundFileHandler extends SimpleChannelUpstreamHandler implements LifeCycleAwareChannelHandler {
 
     private static final Logger log = LoggerFactory.getLogger(InboundFileHandler.class);
 
     private final InboundFile inboundFile;
 
-    private ChannelPromise transferPromise;
+    private ChannelFuture transferFuture;
 
     public InboundFileHandler(InboundFile inboundFile) {
         this.inboundFile = inboundFile;
     }
 
-    @Override
     public void beforeAdd(ChannelHandlerContext ctx) throws Exception {
-        transferPromise = ctx.newPromise();
+        transferFuture = Channels.future(ctx.getChannel());
     }
 
-    public ChannelFuture transferPromise() {
-        return transferPromise;
+    public void afterAdd(ChannelHandlerContext ctx) throws Exception { }
+    public void beforeRemove(ChannelHandlerContext ctx) throws Exception { }
+    public void afterRemove(ChannelHandlerContext ctx) throws Exception { }
+
+    public ChannelFuture transferFuture() {
+        return transferFuture;
     }
 
-    @Override
-    protected void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-        if (inboundFile.read(in)) {
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        ChannelBuffer buf = (ChannelBuffer) e.getMessage();
+        if (inboundFile.read(buf)) {
             log.info("Finished receiving inbound file ({} bytes)", inboundFile.size);
-            ctx.pipeline().remove(this);
-            transferPromise.trySuccess();
+            ctx.getPipeline().remove(this);
+            transferFuture.setSuccess();
         }
     }
 
-    private void fail(ChannelHandlerContext ctx, Throwable cause) {
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+        Throwable cause = e.getCause();
         log.error("File transfer error", cause);
-        if (transferPromise != null) {
+        if (transferFuture != null) {
             try {
                 inboundFile.close();
             } catch (IOException ignored) {
             }
-            transferPromise.tryFailure(cause);
+            transferFuture.setFailure(cause);
         }
-        ctx.close();
-    }
-
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        fail(ctx, cause);
-    }
-
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        fail(ctx, null);
+        ctx.getChannel().close();
     }
 }

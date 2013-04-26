@@ -1,8 +1,7 @@
 package sdfs.client;
 
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.handler.ssl.SslHandler;
+import org.jboss.netty.channel.*;
+import org.jboss.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.protocol.*;
@@ -10,7 +9,7 @@ import sdfs.store.ByteStore;
 
 import java.io.File;
 
-public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
+public class ClientHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
 
@@ -21,19 +20,27 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         this.store = store;
     }
 
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        log.info("channel {} active", ctx.channel().id());
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        log.debug("Channel {} connected", ctx.getChannel().getId());
 
-        SslHandler sslHandler = ctx.pipeline().get(SslHandler.class);
+        SslHandler sslHandler = ctx.getPipeline().get(SslHandler.class);
         if (sslHandler == null) return;
+
+        log.debug("SSL handshake");
         sslHandler.handshake();
     }
 
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, Header header) throws Exception {
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        Object msg = e.getMessage();
+        if (!(msg instanceof Header)) {
+            super.messageReceived(ctx, e);
+            return;
+        }
+
+        Header header = (Header) msg;
+
         if (header instanceof Header.Bye) {
-            ctx.close();
+            ctx.getChannel().close();
         } else if (header instanceof Header.Put) {
             Header.Put put = (Header.Put) header;
             InboundFile inboundFile = new InboundFile(
@@ -41,7 +48,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                     put.size, protocol.fileHashFunction(),
                     put.hash
             );
-            ctx.pipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
+            ctx.getPipeline().addBefore("framer", "inboundFile", new InboundFileHandler(inboundFile));
 
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);
         } else if (header instanceof Header.Prohibited) {
@@ -55,13 +62,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         }
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        try {
-            throw cause;
-        } catch (Throwable e) {
-            log.error("", e);
-        }
-        ctx.close();
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+        log.error("Client error", e.getCause());
+        ctx.getChannel().close();
     }
 }

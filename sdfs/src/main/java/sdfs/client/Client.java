@@ -4,27 +4,27 @@ import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.google.common.io.ByteSource;
 import com.typesafe.config.Config;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.stream.ChunkedStream;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.handler.stream.ChunkedStream;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
+import sdfs.crypto.Crypto;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
 import sdfs.sdfs.Right;
-import sdfs.crypto.Crypto;
 import sdfs.store.ByteStore;
 import sdfs.store.FileStore;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -32,20 +32,17 @@ public class Client {
 
     private static final Logger log = LoggerFactory.getLogger(Client.class);
 
-    public final String host;
-    public final int port;
+    public final InetSocketAddress serverAddr;
     private final Crypto crypto;
-
     private final ByteStore store;
 
     private final Protocol protocol = new Protocol();
 
-    private EventLoopGroup group;
+    private ClientBootstrap bootstrap;
     private Channel channel;
 
     public Client(String host, int port, Crypto crypto, ByteStore store) {
-        this.host = host;
-        this.port = port;
+        serverAddr = new InetSocketAddress(host, port);
         this.crypto = crypto;
         this.store = store;
     }
@@ -60,17 +57,17 @@ public class Client {
     }
 
     public synchronized void connect() throws ConnectException {
-        checkState(group == null);
+        checkState(bootstrap == null);
 
         try {
-            group = new NioEventLoopGroup();
+            bootstrap = new ClientBootstrap(
+                    new NioClientSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool()));
 
-            Bootstrap bootstrap = new Bootstrap()
-                    .group(group)
-                    .channel(NioSocketChannel.class)
-                    .handler(new ClientInitializer(crypto.newSslContext(), store));
+            bootstrap.setPipelineFactory(new ClientPipelineFactory(protocol, crypto.newSslContext(), store));
 
-            channel = bootstrap.connect(host, port).sync().channel();
+            channel = bootstrap.connect(serverAddr).sync().getChannel();
         } catch (InterruptedException ignored) {
             disconnect();
         } catch (Throwable e) {
@@ -81,12 +78,16 @@ public class Client {
     }
 
     public void get(String filename) {
+        checkState(channel != null);
+
         Header.Get get = new Header.Get();
         get.filename = filename;
         channel.write(get);
     }
 
     public void put(String filename) {
+        checkState(channel != null);
+
         ByteSource file = store.get(new File(filename).toPath());
         try {
             Header.Put put = new Header.Put();
@@ -108,32 +109,36 @@ public class Client {
     }
 
     public void delegate(CN to, String filename, Right right, Duration duration) {
+        checkState(channel != null);
+
         Header.Delegate delegate = new Header.Delegate();
         delegate.filename = filename;
         delegate.to = to;
         delegate.right = right;
         delegate.expiration = Instant.now().plus(duration); // TODO use Chronos
+
+        channel.write(delegate);
     }
 
     public synchronized void disconnect() {
-        if (group == null) return;
+        if (bootstrap == null) return;
 
         if (channel != null) {
             try {
-                channel.write(new Header.Bye()).sync();
-                channel.closeFuture().sync();
-            } catch (InterruptedException ignored) {
+                channel.write(new Header.Bye()).sync().getChannel().getCloseFuture().sync();
+            } catch (Exception e) {
+                log.debug("Could not close connection gracefully", e);
             }
         }
 
-        group.shutdown();
-        group = null;
+        bootstrap.releaseExternalResources();
+        bootstrap = null;
     }
 
     public synchronized String toString() {
         StringBuilder string = new StringBuilder();
-        if (group != null) {
-            string.append(String.format("Client is connected to %s:%d", host, port));
+        if (bootstrap != null) {
+            string.append(String.format("Client is connected to %s", serverAddr.toString()));
         } else {
             string.append("Client is disconnected.");
         }

@@ -6,8 +6,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBuffers;
 import sdfs.sdfs.AccessType;
 import sdfs.sdfs.DelegationType;
 import sdfs.sdfs.Right;
@@ -36,9 +36,10 @@ public class Protocol {
         return "\n-----END HEADER-----";
     }
 
-    public ByteBuf headerDelimiter() {
-        return Unpooled.copiedBuffer(endHeader(), headerCharset());
+    public ChannelBuffer headerDelimiter() {
+        return headerDelimiter;
     }
+    private final ChannelBuffer headerDelimiter = ChannelBuffers.copiedBuffer(endHeader(), headerCharset());
 
     public int maxHeaderLength() {
         return 65536;

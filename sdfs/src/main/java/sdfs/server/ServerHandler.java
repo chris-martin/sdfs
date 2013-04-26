@@ -2,32 +2,27 @@ package sdfs.server;
 
 import com.google.common.hash.HashCodes;
 import com.google.common.io.BaseEncoding;
-import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.handler.stream.ChunkedStream;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
+import org.jboss.netty.channel.*;
+import org.jboss.netty.handler.ssl.SslHandler;
+import org.jboss.netty.handler.stream.ChunkedStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
 import sdfs.crypto.CipherStreamFactory;
 import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
-import sdfs.sdfs.*;
+import sdfs.sdfs.AccessControlException;
 import sdfs.sdfs.ResourceUnavailableException;
 import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLSession;
-import java.io.*;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
+public class ServerHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
@@ -44,27 +39,38 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         this.cipherStreamFactory = cipherStreamFactory;
     }
 
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        log.info("channel {} active", ctx.channel().id());
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        log.debug("Channel {} connected", ctx.getChannel().getId());
 
-        final SslHandler sslHandler = ctx.pipeline().get(SslHandler.class);
+        final SslHandler sslHandler = ctx.getPipeline().get(SslHandler.class);
         if (sslHandler == null) return;
+
         sslHandler.handshake().addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
-                SSLSession session = sslHandler.engine().getSession();
-                checkState(client == null);
-                client = CN.fromLdapPrincipal(session.getPeerPrincipal());
-                log.info("Client `{}' connected.", client.name);
+                if (future.isSuccess()) {
+                    SSLSession session = sslHandler.getEngine().getSession();
+                    checkState(client == null);
+                    client = CN.fromLdapPrincipal(session.getPeerPrincipal());
+                    log.info("Client `{}' connected.", client.name);
+                } else {
+                    future.getChannel().close();
+                }
             }
         });
     }
 
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, Header header) throws Exception {
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent event) throws Exception {
+        Object msg = event.getMessage();
+        if (!(msg instanceof Header)) {
+            super.messageReceived(ctx, event);
+            return;
+        }
+
+        Header header = (Header) msg;
+
         if (header instanceof Header.Bye) {
-            ctx.close();
+            ctx.getChannel().close();
         } else if (header instanceof Header.Put) {
             final Header.Put put = (Header.Put) header;
 
@@ -74,9 +80,9 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             try {
                 sdfsPut = sdfs.put(client, put.filename);
             } catch (ResourceUnavailableException e) {
-                ctx.write(Header.unavailable(put));
+                ctx.getChannel().write(Header.unavailable(put));
             } catch (AccessControlException e) {
-                ctx.write(Header.prohibited(put));
+                ctx.getChannel().write(Header.prohibited(put));
             }
 
             OutputStream fileContent;
@@ -93,10 +99,10 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
                     new InboundFile(fileContent, put.size, protocol.fileHashFunction(), put.hash);
 
             InboundFileHandler handler = new InboundFileHandler(inboundFile);
-            ctx.pipeline().addBefore("framer", "inboundFile", handler);
+            ctx.getPipeline().addBefore("framer", "inboundFile", handler);
 
             if (sdfsPut != null) {
-                handler.transferPromise().addListener(new FinishPut(put, sdfsPut));
+                handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
             }
         } else if (header instanceof Header.Get) {
             Header.Get get = (Header.Get) header;
@@ -105,10 +111,10 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             try {
                 sdfsGet = sdfs.get(client, get.filename);
             } catch (ResourceUnavailableException e) {
-                ctx.write(Header.unavailable(get));
+                ctx.getChannel().write(Header.unavailable(get));
                 return;
             } catch (AccessControlException e) {
-                ctx.write(Header.prohibited(get));
+                ctx.getChannel().write(Header.prohibited(get));
                 return;
             }
 
@@ -126,12 +132,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             put.filename = get.filename;
             put.hash = HashCodes.fromBytes(fileHash);
             put.size = fileMetaData.size;
-            ctx.write(put);
+            ctx.getChannel().write(put);
 
             InputStream fileContent = sdfsGet.contentByteSource().openStream();
             fileContent = cipherStreamFactory.decrypt(fileContent, fileHash);
 
-            ctx.write(new ChunkedStream(fileContent)).addListener(new FinishGet(fileContent, sdfsGet));
+            ctx.getChannel().write(new ChunkedStream(fileContent)).addListener(new FinishGet(fileContent, sdfsGet));
         } else if (header instanceof Header.Delegate) {
             Header.Delegate delegate = (Header.Delegate) header;
 
@@ -172,7 +178,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         }
     }
 
-    private static final class FinishGet implements GenericFutureListener<Future<Void>> {
+    private static final class FinishGet implements ChannelFutureListener {
         private final InputStream src;
         private final SDFS.Get sdfsGet;
 
@@ -181,7 +187,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
             this.sdfsGet = sdfsGet;
         }
 
-        public void operationComplete(Future<Void> future) throws Exception {
+        public void operationComplete(ChannelFuture future) throws Exception {
             try {
                 src.close();
             } finally {
@@ -190,14 +196,9 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Header> {
         }
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        try {
-            throw cause;
-        } catch (Throwable e) {
-            log.error("", e);
-        }
-        ctx.close();
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+        log.error("Server error", e.getCause());
+        ctx.getChannel().close();
     }
 
 }

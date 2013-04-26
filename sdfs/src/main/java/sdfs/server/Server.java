@@ -1,13 +1,14 @@
 package sdfs.server;
 
 import com.typesafe.config.Config;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
+import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import sdfs.crypto.Crypto;
 import sdfs.sdfs.SDFS;
 import sdfs.sdfs.SDFSImpl;
-import sdfs.crypto.Crypto;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -20,8 +21,7 @@ public class Server {
     private final Crypto crypto;
     private final SDFS sdfs;
 
-    private EventLoopGroup bossGroup;
-    private EventLoopGroup workerGroup;
+    private ServerBootstrap bootstrap;
 
     private Thread shutdownHook;
 
@@ -48,20 +48,13 @@ public class Server {
         checkState(!started, "Server is already started.");
         started = true;
 
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                startInCurrentThread();
-            }
-        });
-        thread.setDaemon(true);
-        thread.start();
-    }
+        bootstrap = new ServerBootstrap(
+                new NioServerSocketChannelFactory(
+                        Executors.newCachedThreadPool(),
+                        Executors.newCachedThreadPool())
+        );
 
-    void startInCurrentThread() {
-
-        bossGroup = new NioEventLoopGroup();
-        workerGroup = new NioEventLoopGroup();
+        bootstrap.setPipelineFactory(new ServerPipelineFactory(crypto, sdfs));
 
         shutdownHook = new Thread(new Runnable() {
             @Override
@@ -72,17 +65,7 @@ public class Server {
         });
         Runtime.getRuntime().addShutdownHook(shutdownHook);
 
-        try {
-            ServerBootstrap bootstrap = new ServerBootstrap()
-                    .group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .childHandler(new ServerInitializer(crypto, sdfs));
-
-            bootstrap.bind(port).sync().channel().closeFuture().sync();
-        } catch (InterruptedException ignored) {
-        } finally {
-            stop();
-        }
+        bootstrap.bind(new InetSocketAddress(port));
     }
 
     /**
@@ -97,11 +80,7 @@ public class Server {
             shutdownHook = null;
         }
 
-        bossGroup.shutdown();
-        workerGroup.shutdown();
-
-        bossGroup = null;
-        workerGroup = null;
+        bootstrap.releaseExternalResources();
     }
 
 

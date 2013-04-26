@@ -17,10 +17,10 @@ import org.slf4j.LoggerFactory;
 import scala.tools.jline.console.ConsoleReader;
 import scala.tools.jline.console.history.FileHistory;
 import sdfs.client.Client;
-import sdfs.server.Server;
 import sdfs.sdfs.AccessType;
 import sdfs.sdfs.DelegationType;
 import sdfs.sdfs.Right;
+import sdfs.server.Server;
 
 import java.io.File;
 import java.io.IOException;
@@ -218,9 +218,9 @@ public class Console {
             } else {
                 try {
                     client = Client.fromConfig(config);
-                    System.out.println("Connecting to " + client.host + ":" + client.port + "...");
+                    System.out.println("Connecting to " + client.serverAddr + "...");
                     client.connect();
-                    System.out.println("Connected to " + client.host + ":" + client.port + ".");
+                    System.out.println("Connected to " + client.serverAddr + ".");
                 } catch (Exception e) {
                     System.out.println("Error: " + Throwables.getStackTraceAsString(e));
                     client = null;
