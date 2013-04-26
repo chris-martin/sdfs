@@ -49,7 +49,7 @@ public class Header {
 
     public static class Delegate extends File {
         public CN to;
-        public Right right;
+        public Iterable<Right> rights;
         public Instant expiration;
     }
 }

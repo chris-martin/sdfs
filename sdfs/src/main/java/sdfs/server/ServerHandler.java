@@ -14,6 +14,7 @@ import sdfs.crypto.UnlockedBlockCipher;
 import sdfs.protocol.*;
 import sdfs.sdfs.AccessControlException;
 import sdfs.sdfs.ResourceUnavailableException;
+import sdfs.sdfs.Right;
 import sdfs.sdfs.SDFS;
 
 import javax.net.ssl.SSLSession;
@@ -142,9 +143,11 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             Header.Delegate delegate = (Header.Delegate) header;
 
             log.info("Delegating right {} on `{}' from `{}' to `{}' until {}",
-                    delegate.right, delegate.filename, client, delegate.to, delegate.expiration);
+                    delegate.rights, delegate.filename, client, delegate.to, delegate.expiration);
 
-            sdfs.delegate(client, delegate.to, delegate.filename, delegate.right, delegate.expiration);
+            for (Right right : delegate.rights) {
+                sdfs.delegate(client, delegate.to, delegate.filename, right, delegate.expiration);
+            }
         } else {
             throw new ProtocolException("Invalid header");
         }

@@ -1,9 +1,7 @@
 package sdfs;
 
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Charsets;
-import com.google.common.base.Splitter;
-import com.google.common.base.Throwables;
+import com.google.common.base.*;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -239,7 +237,7 @@ public class Console {
                 System.out.println("Putting file " + filename);
                 client.put(filename);
             } else if (head.startsWith("delegate") && tail.size() >= 3) {
-                DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
+                final DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
 
                 String filename = tail.get(0);
                 CN delegateClient = new CN(tail.get(1));
@@ -257,11 +255,15 @@ public class Console {
                         accessTypes.add(AccessType.Put);
                     }
                 }
-                // TODO combine into one call
-                for (AccessType accessType : accessTypes) {
-                    Right right = new Right(accessType, delegationType);
-                    client.delegate(delegateClient, filename, right, duration);
-                }
+                Iterable<Right> rights = FluentIterable
+                        .from(accessTypes)
+                        .transform(new Function<AccessType, Right>() {
+                            public Right apply(AccessType type) {
+                                return new Right(type, delegationType);
+                            }
+                        });
+
+                client.delegate(delegateClient, filename, rights, duration);
             }
         }
 

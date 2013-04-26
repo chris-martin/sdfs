@@ -40,7 +40,7 @@ public class HeaderEncoder extends OneToOneEncoder {
         }
         if (msg instanceof Header.Delegate) {
             headers.add(((Header.Delegate) msg).to.name);
-            headers.add(codec.protocol.encodeRight(((Header.Delegate) msg).right));
+            headers.add(codec.protocol.encodeRights(((Header.Delegate) msg).rights));
             headers.add(String.valueOf(((Header.Delegate) msg).expiration.getMillis()));
         }
         String encoded = codec.protocol.encodeHeaders(headers);

@@ -2,6 +2,7 @@ package sdfs.client;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.typesafe.config.Config;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -108,13 +109,13 @@ public class Client {
         }
     }
 
-    public void delegate(CN to, String filename, Right right, Duration duration) {
+    public void delegate(CN to, String filename, Iterable<Right> rights, Duration duration) {
         checkState(channel != null);
 
         Header.Delegate delegate = new Header.Delegate();
         delegate.filename = filename;
         delegate.to = to;
-        delegate.right = right;
+        delegate.rights = ImmutableList.copyOf(rights);
         delegate.expiration = Instant.now().plus(duration); // TODO use Chronos
 
         channel.write(delegate);

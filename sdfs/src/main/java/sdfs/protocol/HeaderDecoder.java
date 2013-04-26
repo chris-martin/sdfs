@@ -44,7 +44,7 @@ public class HeaderDecoder extends OneToOneDecoder {
         }
         if (header instanceof Header.Delegate) {
             ((Header.Delegate) header).to = new CN(headers.next());
-            ((Header.Delegate) header).right = codec.protocol.decodeRight(headers.next());
+            ((Header.Delegate) header).rights = codec.protocol.decodeRights(headers.next());
             ((Header.Delegate) header).expiration = new Instant(Long.parseLong(headers.next()));
         }
 

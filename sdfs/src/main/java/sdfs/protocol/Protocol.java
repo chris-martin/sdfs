@@ -1,7 +1,9 @@
 package sdfs.protocol;
 
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
@@ -77,6 +79,14 @@ public class Protocol {
         return "unavailable";
     }
 
+    public String encodeRights(Iterable<Right> rights) {
+        return Joiner.on(" ").join(FluentIterable.from(rights).transform(new Function<Right, Object>() {
+            public String apply(Right right) {
+                return encodeRight(right);
+            }
+        }));
+    }
+
     public String encodeRight(Right right) {
         StringBuilder s = new StringBuilder();
         s.append(encodeAccessType(right.accessType));
@@ -96,6 +106,14 @@ public class Protocol {
 
     private String star() {
         return "*";
+    }
+
+    public Iterable<Right> decodeRights(String s) {
+        return FluentIterable.from(Splitter.on(" ").split(s)).transform(new Function<String, Right>() {
+            public Right apply(String right) {
+                return decodeRight(right);
+            }
+        });
     }
 
     public Right decodeRight(String s) {
