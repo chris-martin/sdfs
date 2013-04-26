@@ -269,7 +269,11 @@ public class Console {
                         });
 
                 client.delegate(delegateClient, filename, rights, duration);
+            } else {
+                System.out.println(help());
             }
+        } else {
+            System.out.println(help());
         }
 
     }
