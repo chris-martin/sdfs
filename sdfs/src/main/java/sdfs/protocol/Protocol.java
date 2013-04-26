@@ -143,6 +143,6 @@ public class Protocol {
     }
 
     public BaseEncoding hashEncoding() {
-        return BaseEncoding.base64().lowerCase();
+        return BaseEncoding.base64();
     }
 }
