@@ -58,6 +58,9 @@ public class Console {
             String line;
             try {
                 line = console.readLine("sdfs> ");
+                if (line == null) {
+                    line = "q";
+                }
             } catch (IOException e) {
                 halt = true;
                 continue;
