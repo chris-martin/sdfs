@@ -11,7 +11,6 @@ import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.stream.ChunkedStream;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,14 +138,14 @@ public class Client {
         }
     }
 
-    public synchronized void delegate(CN to, String filename, Iterable<Right> rights, Duration duration) {
+    public synchronized void delegate(CN to, String filename, Iterable<Right> rights, Instant expiration) {
         checkState(channel != null);
 
         Header.Delegate delegate = new Header.Delegate();
         delegate.filename = filename;
         delegate.to = to;
         delegate.rights = ImmutableList.copyOf(rights);
-        delegate.expiration = Instant.now().plus(duration);
+        delegate.expiration = expiration;
 
         channel.write(delegate);
     }

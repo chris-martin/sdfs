@@ -49,7 +49,8 @@ object Build extends sbt.Build {
         "com.typesafe" % "config" % "1.0.0",
         "io.netty" % "netty" % "3.6.5.Final",
         "joda-time" % "joda-time" % "2.2",
-        "javax.inject" % "javax.inject" % "1"
+        "javax.inject" % "javax.inject" % "1",
+        "com.joestelmach" % "natty" % "0.6"
       ),
       libraryDependencies ++= Seq(
         "org.mockito" % "mockito-all" % "1.9.5"

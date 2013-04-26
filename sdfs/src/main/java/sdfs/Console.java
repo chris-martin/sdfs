@@ -1,6 +1,9 @@
 package sdfs;
 
-import com.google.common.base.*;
+import com.google.common.base.Charsets;
+import com.google.common.base.Function;
+import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -9,7 +12,7 @@ import com.google.common.io.Resources;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
-import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.tools.jline.console.ConsoleReader;
@@ -31,7 +34,6 @@ public class Console {
     Config config;
     ConsoleReader console;
     Thread shutdownHook;
-    Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
     boolean halt;
@@ -73,7 +75,18 @@ public class Console {
                 continue;
             }
 
-            execute(ImmutableList.copyOf(commandSplitter.split(line)));
+            execute(
+                FluentIterable.from(
+                    Splitter.on("\n").split(
+                        line.replaceAll("\"([^\"]*)\"|(\\S+)", "$1$2\n")
+                    )
+                ).transform(new Function<String, String>() {
+                    public String apply(String x) {
+                        return x.trim();
+                    }
+                })
+                .toList()
+            );
         }
 
         synchronized (this) {
@@ -269,7 +282,12 @@ public class Console {
 
                 String filename = tail.get(0);
                 CN delegateClient = new CN(tail.get(1));
-                Duration duration = new Duration(Long.parseLong(tail.get(2)));// Duration.parse(tail.get(2));
+
+                Instant expiration = new Instant(
+                    new com.joestelmach.natty.Parser().parse(
+                        tail.get(2)
+                    ).get(0).getDates().get(0)
+                );
 
                 List<AccessType> accessTypes;
                 if (tail.size() < 4) {
@@ -291,7 +309,7 @@ public class Console {
                             }
                         });
 
-                client.delegate(delegateClient, filename, rights, duration);
+                client.delegate(delegateClient, filename, rights, expiration);
             } else {
                 System.out.println(help());
             }
