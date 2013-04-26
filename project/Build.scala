@@ -13,24 +13,7 @@ object Build extends sbt.Build {
   }
 
   lazy val root = project("root", ".") {
-    val turninTask = TaskKey[File]("turnin")
-    baseSettings ++ Seq(
-      turninTask <<= (baseDirectory, target, streams) map {
-        (base: File, target: File, streams: TaskStreams) => {
-          val zip: File = target / "sdfs-francis-martin.zip"
-          val inputs: Seq[(File, String)] =
-            Seq("README.md", "AUTHORS.md").map { path => (base / path, path) } ++
-            Seq((base / "report/target/sdfs.pdf", "report.pdf")) ++
-            (ls(base / "pki") ++ (base / "project").listFiles ++ ls(base / "sdfs/src")).map { file =>
-              (file, "source/" + file.relativeTo(base).get.toPath)
-            }
-          println(inputs.mkString("\n"))
-          IO.delete(zip)
-          IO.zip(inputs, zip)
-          zip: File
-        }
-      }
-    )
+    baseSettings
   }.aggregate(sdfs, report)
 
   lazy val sdfs = project("sdfs") {
