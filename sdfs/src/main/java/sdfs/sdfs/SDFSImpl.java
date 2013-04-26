@@ -30,7 +30,7 @@ public class SDFSImpl implements SDFS {
     }
 
     public static SDFSImpl fromConfig(Config config) {
-        FileStore fileStore = new FileStore(new File(config.getString("sdfs.server-store-path")).toPath());
+        FileStore fileStore = new FileStore(new File(config.getString("sdfs.store.server")).toPath());
         return new SDFSImpl(fileStore, fileStore, PolicyStoreImpl.fromConfig(config));
     }
 

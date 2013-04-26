@@ -52,7 +52,7 @@ public class Client {
             config.getString("sdfs.host"),
             config.getInt("sdfs.port"),
             new Crypto(config),
-            new FileStore(new File(config.getString("sdfs.client-store-path")).toPath())
+            new FileStore(new File(config.getString("sdfs.store.client")).toPath())
         );
     }
 
