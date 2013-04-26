@@ -4,7 +4,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
-import com.google.common.io.CountingOutputStream;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,7 @@ public class InboundFile {
     public InboundFile(OutputStream dest, long size, HashFunction hashFunction, HashCode expectedHash) {
         hasher = hashFunction.newHasher((int) size);
         this.expectedHash = expectedHash;
-        this.dest = new CountingOutputStream(new HashingOutputStream(dest, hasher));
+        this.dest = new HashingOutputStream(dest, hasher);
         this.size = size;
         stopwatch = new Stopwatch().start();
     }
