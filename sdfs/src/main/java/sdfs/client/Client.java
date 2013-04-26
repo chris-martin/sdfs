@@ -126,11 +126,11 @@ public class Client {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     stopwatch.stop();
                     if (future.isSuccess()) {
-                        System.out.printf("Put `%s' (%s) in %s (%s).\n",
+                        System.out.printf("Put `%s' (%s) in %s (%s).%n",
                                 put.filename, Output.transferSize(put.size),
                                 stopwatch.toString(), Output.transferRate(put.size, stopwatch));
                     } else {
-                        System.out.printf("Failed to put `%s'.", put.filename);
+                        System.out.printf("Failed to put `%s'.%n", put.filename);
                     }
                 }
             });

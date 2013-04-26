@@ -28,13 +28,21 @@ public class Console {
 
     private static final Logger log = LoggerFactory.getLogger(Console.class);
 
-    Config config = ConfigFactory.empty();
+    Config config;
     ConsoleReader console;
     Thread shutdownHook;
     Splitter commandSplitter = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
     Server server;
     Client client;
     boolean halt;
+
+    public Console() {
+        this(ConfigFactory.empty());
+    }
+
+    public Console(Config config) {
+        this.config = config;
+    }
 
     void run() {
         LogConfiguration.disableLogging();
@@ -68,13 +76,15 @@ public class Console {
             execute(ImmutableList.copyOf(commandSplitter.split(line)));
         }
 
-        if (client != null) {
-            client.disconnect();
-            client = null;
-        }
-        if (server != null) {
-            server.stop();
-            server = null;
+        synchronized (this) {
+            if (client != null) {
+                client.disconnect();
+                client = null;
+            }
+            if (server != null) {
+                server.stop();
+                server = null;
+            }
         }
     }
 
@@ -292,8 +302,7 @@ public class Console {
     }
 
     public static void main(String[] args) {
-        Console console = new Console();
-        console.config = config(args);
+        Console console = new Console(config(args));
         console.run();
     }
 

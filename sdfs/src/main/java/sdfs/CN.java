@@ -24,9 +24,8 @@ public class CN implements Comparable<CN> {
             FluentIterable
                 .from(new LdapName(principal.getName()).getRdns())
                 .firstMatch(new Predicate<Rdn>() {
-                    @Override
-                    public boolean apply(Rdn input) {
-                        return input.getType().equalsIgnoreCase("CN");
+                    public boolean apply(Rdn rdn) {
+                        return rdn != null && rdn.getType().equalsIgnoreCase("CN");
                     }
                 })
                 .get().getValue().toString()

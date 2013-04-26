@@ -123,18 +123,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
 
             InboundFileHandler handler = new InboundFileHandler(inboundFile);
             ctx.getPipeline().addBefore("framer", "inboundFile", handler);
-            handler.transferFuture().addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    if (future.isSuccess()) {
-                        System.out.printf("Received `%s' (%s) from `%s' in %s (%s).\n",
-                                put.filename, Output.transferSize(inboundFile.size), client.name,
-                                inboundFile.transferTime(), inboundFile.transferRate());
-                    } else {
-                        System.out.printf("Failed to receive `%s' from `%s'.\n", put.filename, client.name);
-                    }
-                }
-            });
 
             if (sdfsPut != null) {
                 handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
@@ -182,11 +170,11 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     stopwatch.stop();
                     if (future.isSuccess()) {
-                        System.out.printf("Sent `%s' (%d bytes) to `%s' in %s (%s).\n",
+                        System.out.printf("Sent `%s' (%d bytes) to `%s' in %s (%s).%n",
                                 put.filename, put.size, client.name,
                                 stopwatch.toString(), Output.transferRate(put.size, stopwatch));
                     } else {
-                        System.out.printf("Failed to send `%s' to `%s'\n", put.filename, client.name);
+                        System.out.printf("Failed to send `%s' to `%s'%n", put.filename, client.name);
                     }
                 }
             });

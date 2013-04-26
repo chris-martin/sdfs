@@ -1,8 +1,7 @@
 package sdfs.server;
 
-import com.google.common.hash.HashCodes;
-
 import java.io.*;
+import java.util.Arrays;
 
 public class FileMetaData {
 
@@ -11,7 +10,7 @@ public class FileMetaData {
 
     public FileMetaData(long size, byte[] encryptedHash) {
         this.size = size;
-        this.encryptedHash = encryptedHash;
+        this.encryptedHash = Arrays.copyOf(encryptedHash, encryptedHash.length);
     }
 
     public void writeTo(OutputStream out) throws IOException {

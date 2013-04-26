@@ -61,11 +61,11 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
-                        System.out.printf("Got `%s' (%s) in %s (%s).\n",
+                        System.out.printf("Got `%s' (%s) in %s (%s).%n",
                                 put.filename, Output.transferSize(inboundFile.size),
                                 inboundFile.transferTime(), inboundFile.transferRate());
                     } else {
-                        System.out.printf("Failed to get `%s'.\n", put.filename);
+                        System.out.printf("Failed to get `%s'.%n", put.filename);
                     }
                 }
             });
