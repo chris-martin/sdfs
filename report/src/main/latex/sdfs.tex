@@ -51,7 +51,7 @@ Headers are realitively short (no more than 6 lines), and we impose a maximum he
 
 \paragraph{Lines of the message header}
 \begin{enumerate}
-\item ``get''
+\item \texttt{get}
 \item A new \text{correlation ID}
 \item The name of the file
 \end{enumerate}
@@ -60,7 +60,7 @@ Headers are realitively short (no more than 6 lines), and we impose a maximum he
 \begin{quote}
 \texttt{%
 get \\
-e406b811-4826-4ed9-89a3-a41dbf9ca0fe \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
 sas.txt
 }
 \end{quote}
@@ -68,10 +68,13 @@ sas.txt
 \subsubsection{Put}
 
 \textit{Put} messages are sent by both clients and servers.
+When the server sends a \textit{put}, the file body immediately follows.
+When the client sends a \textit{put}, it waits to receive an \textit{ok}
+response before sending the file content.
 
 \paragraph{Lines of the message header}
 \begin{enumerate}
-\item ``put''
+\item \texttt{put}
 \item A \text{correlation ID}. For a client-to-server message, this is a new ID.
       For a server-to-client message, this is the ID sent in the \textit{get}
       message that was used to request this file.
@@ -84,7 +87,7 @@ sas.txt
 \begin{quote}
 \texttt{%
 put \\
-dfd03c22-af62-40d4-86cb-ea43d399cd5c \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
 sas.txt \\
 3DkQJagLJhzzo8JhjKV77CFP \textit{[\ldots]} \\
 706120
@@ -95,25 +98,127 @@ sas.txt \\
 
 \textit{Delegate} messages are send by clients.
 
-
 \paragraph{Lines of the message header}
 \begin{enumerate}
-\item ``delegate''
+\item \texttt{delegate}
 \item A new \text{correlation ID}.
 \item The name of the file
 \item The CN of the principal receiving delegated rights
-\item Some non-empty space-delimited combination of ``get'', ``get*'', ``put'', ``put*''
+\item Some non-empty space-delimited combination of \texttt{get}, \texttt{get*}, \texttt{put}, \texttt{put*}
 \item The expiration time of the delegation, as a UNIX timestamp (number of milliseconds since 1970 UTC)
 \end{enumerate}
 
 \paragraph{Example header}
 \begin{quote}
 \texttt{%
-put \\
-dfd03c22-af62-40d4-86cb-ea43d399cd5c \\
+delegate \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
 sas.txt \\
-3DkQJagLJhzzo8JhjKV77CFP \textit{[\ldots]} \\
-706120
+bob \\
+get* put \\
+1367021993012
+}
+\end{quote}
+
+\subsubsection{Ok}
+
+After the server receives a \textit{put}, it replies with an \textit{ok} message if the client
+has permission to write the file.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item \texttt{ok}
+\item The \text{correlation ID} of the message to which the server is responding
+\item The name of the file for which write access was requested
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+ok \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
+sas.txt
+}
+\end{quote}
+
+\subsubsection{Unavailable}
+
+The server responds to a \textit{get} or \textit{put} with an \textit{unavailable} message
+if the requested resource is currently locked. This indicates a temporary failure condition,
+and the client should wait briefly and retry.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item \texttt{unavailable}
+\item The \text{correlation ID} of the message to which the server is responding
+\item The name of the file on which some operation was requested
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+unavailable \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
+sas.txt
+}
+\end{quote}
+
+\subsubsection{Prohibited}
+
+The server responds to a \textit{get} or \textit{put} with an \textit{prohibited} message
+if the client does not have permission to perform the requested operation.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item \texttt{prohibited}
+\item The \text{correlation ID} of the message to which the server is responding
+\item The name of the file on which some operation was requested
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+prohibited \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
+sas.txt
+}
+\end{quote}
+
+\subsubsection{Nonexistent}
+
+The server responds to a \textit{get} with a \textit{nonexistent} message
+if the client requested a resource that does not exist.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item \texttt{nonexistent}
+\item The \text{correlation ID} of the message to which the server is responding
+\item The name of the file on which some operation was requested
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+nonexistent \\
+c36c6d81-2051-49e5-8e17-1c746aa9533b \\
+sas.txt
+}
+\end{quote}
+
+\subsubsection{Bye}
+
+The client or server can send a \textit{bye} message as a friendly indicator
+of intent to close the connection.
+
+\paragraph{Lines of the message header}
+\begin{enumerate}
+\item \texttt{bye}
+\end{enumerate}
+
+\paragraph{Example header}
+\begin{quote}
+\texttt{%
+bye
 }
 \end{quote}
 
