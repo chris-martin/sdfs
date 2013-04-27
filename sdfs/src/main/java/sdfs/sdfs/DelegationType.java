@@ -2,9 +2,9 @@ package sdfs.sdfs;
 
 public enum DelegationType {
 
-    None("_"),
+    None("none"),
 
-    Star("*");
+    Star("star");
 
     private final String marshaled;
 

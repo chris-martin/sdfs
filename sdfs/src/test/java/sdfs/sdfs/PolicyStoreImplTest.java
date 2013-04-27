@@ -3,6 +3,7 @@ package sdfs.sdfs;
 import org.joda.time.Instant;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.store.MockStore;
@@ -17,6 +18,7 @@ public class PolicyStoreImplTest {
 
         CN alice = new CN("alice");
         CN bob = new CN("bob");
+        CN charlie = new CN("charlie");
 
         String apple = "apples.pdf";
 
@@ -78,6 +80,28 @@ public class PolicyStoreImplTest {
         Assert.assertEquals(
             false,
             policy.hasAccess(bob, apple, AccessType.Get)
+        );
+
+    }}; }
+
+    @Test(expected = AccessControlException.class)
+    public void getGrantGetWithoutStar() throws Exception { new Fixture() {{
+
+        policy.grantOwner(alice, apple);
+        policy.delegate(alice, bob, apple, Right.Get, new Instant(10));
+        policy.delegate(bob, charlie, apple, Right.Get, new Instant(10));
+
+    }}; }
+
+    @Test public void getGrantGetStar() throws Exception { new Fixture() {{
+
+        policy.grantOwner(alice, apple);
+        policy.delegate(alice, bob, apple, Right.GetStar, new Instant(10));
+        policy.delegate(bob, charlie, apple, Right.Get, new Instant(10));
+
+        Assert.assertEquals(
+            true,
+            policy.hasAccess(charlie, apple, AccessType.Get)
         );
 
     }}; }
