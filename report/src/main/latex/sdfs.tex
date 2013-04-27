@@ -226,4 +226,63 @@ bye
 
 \section{Performance}
 
+\begin{verbatim}
+
+
+sdfs> set keystore.personal.file pki/client1.jks
+sdfs> set host gnome
+sdfs> c
+
+Client connecting to gnome/10.90.15.203:8443...
+Client connected to gnome/10.90.15.203:8443.
+sdfs> put 100k
+Calculating hash of `100k'...
+Putting file `100k'...
+sdfs> Put `100k' (100 kB) in 38.68 ms (2.585 MB/s).
+
+sdfs> put 1m
+Calculating hash of `1m'...
+Putting file `1m'...
+sdfs> Put `1m' (1 MB) in 102.3 ms (9.778 MB/s).
+
+sdfs> put 10m
+Calculating hash of `10m'...
+Putting file `10m'...
+sdfs> Put `10m' (10 MB) in 526.7 ms (18.986 MB/s).
+
+sdfs> put 100m
+Calculating hash of `100m'...
+Putting file `100m'...
+sdfs> Put `100m' (100 MB) in 4.488 s (22.283 MB/s).
+
+sdfs> put 1g
+Calculating hash of `1g'...
+Putting file `1g'...
+sdfs> Put `1g' (1 GB) in 48.67 s (20.546 MB/s).
+
+
+
+
+
+
+
+
+sdfs> s
+Starting server on port 8443...
+Server started on port 8443.
+sdfs> Receiving `100k' (100 kB) from `client1'...
+Received `100k' (100 kB) from `client1' in 80.98 ms (1.235 MB/s).
+Receiving `1m' (1 MB) from `client1'...
+Received `1m' (1 MB) from `client1' in 117.1 ms (8.537 MB/s).
+Receiving `10m' (10 MB) from `client1'...
+Received `10m' (10 MB) from `client1' in 560.4 ms (17.845 MB/s).
+Receiving `100m' (100 MB) from `client1'...
+Received `100m' (100 MB) from `client1' in 4.622 s (21.635 MB/s).
+Receiving `1g' (1 GB) from `client1'...
+Received `1g' (1 GB) from `client1' in 48.85 s (20.472 MB/s).
+
+
+\end{verbatim}
+
+
 \end{document}
