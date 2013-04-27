@@ -47,7 +47,7 @@
       sdfs> set keystore.personal.file pki/client2.jks
 
   This application is capable of running as both a client and a server:
-  To begin acting as a server, just type "server":
+  To begin acting as a server, type "server":
 
       sdfs> server
       Starting server on port 8443...
@@ -60,7 +60,7 @@
       Client connected to localhost/127.0.0.1:8443.
 
   The host and port to which the client connects are specified in the config,
-  which can be modified with the "set" command.
+  which can be modified before starting the server/client with the "set" command.
 
       sdfs> set host yourservername
       sdfs> set port 8080
