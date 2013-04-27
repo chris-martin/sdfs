@@ -26,7 +26,7 @@ public class SDFSImplTest {
     }
 
     @Test
-    public void test() throws Exception { new Fixture() {{
+    public void testPutAndGet() throws Exception { new Fixture() {{
 
         SDFS.Put put = sdfs.put(alice, apple);
         put.contentByteSink().write(new byte[] { 1, 2, 3 });
@@ -47,7 +47,48 @@ public class SDFSImplTest {
             get.metaByteSource().read()
         );
 
+        assertEquals(
+            true,
+            sdfs.locks.containsKey(apple)
+        );
+
         get.release();
+
+        assertEquals(
+            false,
+            sdfs.locks.containsKey(apple)
+        );
+
+    }}; }
+
+    @Test(expected = AccessControlException.class)
+    public void testPutAndFailGet1() throws Exception { new Fixture() {{
+
+        SDFS.Put put = sdfs.put(alice, apple);
+        put.contentByteSink().write(new byte[] { 1, 2, 3 });
+        put.metaByteSink().write(new byte[] { 4, 5, 6 });
+        put.release();
+
+        SDFS.Get get = sdfs.get(bob, apple);
+
+    }}; }
+
+    @Test
+    public void testPutAndFailGet2() throws Exception { new Fixture() {{
+
+        SDFS.Put put = sdfs.put(alice, apple);
+        put.contentByteSink().write(new byte[] { 1, 2, 3 });
+        put.metaByteSink().write(new byte[] { 4, 5, 6 });
+        put.release();
+
+        try {
+            sdfs.get(bob, apple);
+        } catch (AccessControlException ignored) { }
+
+        assertEquals(
+            false,
+            sdfs.locks.containsKey(apple)
+        );
 
     }}; }
 

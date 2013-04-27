@@ -42,7 +42,7 @@ public class SDFSImpl implements SDFS {
 
     }
 
-    private final Map<String, Lock> locks = new HashMap<>();
+    final Map<String, Lock> locks = new HashMap<>();
 
     private Lock getOrCreateLock(String resourceName) {
 
@@ -58,9 +58,9 @@ public class SDFSImpl implements SDFS {
 
     public synchronized Get get(CN cn, String resourceName) {
 
-        Lock lock = getOrCreateLock(resourceName);
+        Lock lock = locks.get(resourceName);
 
-        if (lock.put != null) {
+        if (lock != null && lock.put != null) {
             throw new ResourceUnavailableException("Cannot read; file is currently being written");
         }
 
@@ -71,6 +71,8 @@ public class SDFSImpl implements SDFS {
         if (!policyStore.hasAccess(cn, resourceName, AccessType.Get)) {
             throw new AccessControlException();
         }
+
+        lock = getOrCreateLock(resourceName);
 
         Get get = new GetImpl(resourceName);
         lock.gets.add(get);
