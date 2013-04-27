@@ -277,12 +277,12 @@ public class Console {
                 client.get(filename);
             } else if (head.equals("put") && tail.size() == 1) {
                 String filename = tail.get(0);
-                System.out.printf("Putting file `%s'...%n", filename);
                 try {
                     client.put(filename);
                 } catch (CannotPutException e) {
-                    System.out.println(e.getMessage());
+                    System.out.printf("Could not put file: %s%n", e.getMessage());
                 }
+                System.out.printf("Putting file `%s'...%n", filename);
             } else if (head.startsWith("delegate") && tail.size() >= 3) {
                 final DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
 

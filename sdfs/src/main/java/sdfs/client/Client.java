@@ -118,7 +118,7 @@ public class Client {
             put.size = file.size();
 
             if (!clientHandler.setOutboundFile(new OutboundFile(put, file))) {
-                throw new CannotPutException("Client already sending another file.");
+                throw new CannotPutException("Client already putting another file.");
             }
 
             channel.write(put);
