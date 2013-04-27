@@ -124,10 +124,26 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             InboundFileHandler handler = new InboundFileHandler(inboundFile);
             ctx.getPipeline().addBefore("framer", "inboundFile", handler);
 
+            System.out.printf("Receiving `%s' (%s) from `%s'...%n",
+                    put.filename, Output.transferSize(inboundFile.size), client.name);
+
             // OK client's put request
             ctx.getChannel().write(Header.ok(put));
 
-            handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
+            ChannelFuture transferFuture = handler.transferFuture();
+            transferFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isSuccess()) {
+                        System.out.printf("Received `%s' (%s) from `%s' in %s (%s).%n",
+                                put.filename, Output.transferSize(inboundFile.size),
+                                client.name, inboundFile.transferTime(), inboundFile.transferRate());
+                    } else {
+                        System.out.printf("Failed to receive `%s' from `%s'.%n", put.filename, client.name);
+                    }
+                }
+            });
+            transferFuture.addListener(new FinishPut(put, sdfsPut));
         }
 
         public void visit(Header.Get get) throws IOException {
