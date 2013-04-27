@@ -41,6 +41,11 @@ identity. The pki directory comes with keystores for the following identities:
   - client2
   - client3
 
+To create another keystore for "client4" with a cert signed by our CA, run
+from the pki directory:
+
+    $ gen-cert.sh client4
+
 To switch to another identity, such as "client2", type:
 
     sdfs> set keystore.personal.file pki/client2.jks
