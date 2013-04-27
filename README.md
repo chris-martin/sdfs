@@ -1,4 +1,3 @@
-
 SDFS - Instructions
 ===================================================================
 
@@ -35,7 +34,7 @@ Type "config" to see the current configuration.
 For the purpose of this demo, this output includes passwords for all of
 the keystores. Notice that the personal keystore file is set to
 "pki/server.jks" by default, which means you are acting as the "server"
-identity. The pki directory comes with keystores for the following identies:
+identity. The pki directory comes with keystores for the following identities:
 
   - server
   - client1
