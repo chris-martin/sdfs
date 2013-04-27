@@ -83,6 +83,10 @@ public class Protocol {
         return "nonexistent";
     }
 
+    public String ok() {
+        return "ok";
+    }
+
     public String encodeRights(Iterable<Right> rights) {
         return Joiner.on(" ").join(FluentIterable.from(rights).transform(new Function<Right, Object>() {
             public String apply(Right right) {

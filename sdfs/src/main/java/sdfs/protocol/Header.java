@@ -56,6 +56,16 @@ public abstract class Header {
         return unavailable;
     }
 
+    public static class Ok extends File {
+        public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
+    }
+
+    public static Ok ok(File request) {
+        Ok unavailable = new Ok();
+        unavailable.respondsTo(request);
+        return unavailable;
+    }
+
     public static class Get extends File {
         public void accept(Visitor visitor) throws Exception { visitor.visit(this); }
     }
@@ -82,6 +92,7 @@ public abstract class Header {
         void visit(Prohibited prohibited) throws Exception;
         void visit(Unavailable unavailable) throws Exception;
         void visit(Nonexistent nonexistent) throws Exception;
+        void visit(Ok ok) throws Exception;
         void visit(Get get) throws Exception;
         void visit(Put put) throws Exception;
         void visit(Delegate delegate) throws Exception;

@@ -10,12 +10,10 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.handler.stream.ChunkedStream;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.CN;
-import sdfs.Output;
 import sdfs.crypto.Crypto;
 import sdfs.protocol.Header;
 import sdfs.protocol.Protocol;
@@ -24,6 +22,7 @@ import sdfs.store.ByteStore;
 import sdfs.store.FileStore;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
@@ -101,39 +100,30 @@ public class Client {
         channel.write(get);
     }
 
-    public synchronized void put(String filename) {
+    public synchronized void put(String filename) throws CannotPutException {
         checkState(channel != null);
 
         ByteSource file = store.get(new File(filename).toPath());
         try {
+            ClientHandler clientHandler = channel.getPipeline().get(ClientHandler.class);
+
             final Header.Put put = new Header.Put();
             put.filename = filename;
 
-            log.debug("Calculating hash");
+            System.out.printf("Calculating hash of `%s'...%n", put.filename);
             final Stopwatch stopwatch = new Stopwatch().start();
             put.hash = file.hash(protocol.fileHashFunction());
             log.debug("Hashed file in {}", stopwatch.stop());
 
             put.size = file.size();
-            channel.write(put);
 
-            stopwatch.reset().start();
-            log.debug("Writing file contents");
-            channel.write(new ChunkedStream(file.openBufferedStream())).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    stopwatch.stop();
-                    if (future.isSuccess()) {
-                        System.out.printf("Put `%s' (%s) in %s (%s).%n",
-                                put.filename, Output.transferSize(put.size),
-                                stopwatch.toString(), Output.transferRate(put.size, stopwatch));
-                    } else {
-                        System.out.printf("Failed to put `%s'.%n", put.filename);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
+            if (!clientHandler.setOutboundFile(new OutboundFile(put, file))) {
+                throw new CannotPutException("Client already sending another file.");
+            }
+
+            channel.write(put);
+        } catch (IOException e) {
+            throw new CannotPutException(e.getMessage(), e);
         }
     }
 
