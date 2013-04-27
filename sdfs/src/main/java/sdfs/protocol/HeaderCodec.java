@@ -35,6 +35,7 @@ public class HeaderCodec {
                 .put(Header.Put.class, protocol.put())
                 .put(Header.Unavailable.class, protocol.unavailable())
                 .put(Header.Nonexistent.class, protocol.nonexistent())
+                .put(Header.Ok.class, protocol.ok())
                 .build();
     }
 
@@ -71,8 +72,12 @@ public class HeaderCodec {
                     visit((Header.File) unavailable);
                 }
 
-                public void visit(Header.Nonexistent nonexistent) throws Exception {
+                public void visit(Header.Nonexistent nonexistent) {
                     visit((Header.File) nonexistent);
+                }
+
+                public void visit(Header.Ok ok) {
+                    visit((Header.File) ok);
                 }
 
                 public void visit(Header.Get get) {
@@ -126,8 +131,12 @@ public class HeaderCodec {
                     visit((Header.File) unavailable);
                 }
 
-                public void visit(Header.Nonexistent nonexistent) throws Exception {
+                public void visit(Header.Nonexistent nonexistent) {
                     visit((Header.File) nonexistent);
+                }
+
+                public void visit(Header.Ok ok) {
+                    visit((Header.File) ok);
                 }
 
                 public void visit(Header.Get get) {

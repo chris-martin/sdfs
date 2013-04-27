@@ -4,7 +4,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.hash.HashCodes;
 import com.google.common.io.BaseEncoding;
-import com.google.common.io.ByteStreams;
 import org.jboss.netty.channel.*;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.jboss.netty.handler.stream.ChunkedStream;
@@ -96,27 +95,28 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             throw new ProtocolException("Client cannot sent nonexistent header to server");
         }
 
+        public void visit(Header.Ok ok) throws Exception {
+            throw new ProtocolException("Client cannot sent ok header to server");
+        }
+
         public void visit(final Header.Put put) throws IOException {
             log.info("Receiving file `{}' ({} bytes) from {}", put.filename, put.size, client);
 
-            SDFS.Put sdfsPut = null;
+            SDFS.Put sdfsPut;
             try {
                 sdfsPut = sdfs.put(client, put.filename);
             } catch (ResourceUnavailableException e) {
                 ctx.getChannel().write(Header.unavailable(put));
+                return;
             } catch (AccessControlException e) {
                 ctx.getChannel().write(Header.prohibited(put));
+                return;
             }
 
-            OutputStream fileContent;
-            if (sdfsPut == null) {
-                fileContent = ByteStreams.nullOutputStream();
-            } else {
-                fileContent = sdfsPut.contentByteSink().openBufferedStream();
-                byte[] fileHash = put.hash.asBytes();
-                log.debug("File hash {}", BaseEncoding.base16().lowerCase().encode(fileHash));
-                fileContent = cipherStreamFactory.encrypt(fileContent, fileHash);
-            }
+            OutputStream fileContent = sdfsPut.contentByteSink().openBufferedStream();
+            byte[] fileHash = put.hash.asBytes();
+            log.debug("File hash {}", BaseEncoding.base16().lowerCase().encode(fileHash));
+            fileContent = cipherStreamFactory.encrypt(fileContent, fileHash);
 
             final InboundFile inboundFile =
                     new InboundFile(fileContent, put.size, protocol.fileHashFunction(), put.hash);
@@ -124,9 +124,10 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             InboundFileHandler handler = new InboundFileHandler(inboundFile);
             ctx.getPipeline().addBefore("framer", "inboundFile", handler);
 
-            if (sdfsPut != null) {
-                handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
-            }
+            // OK client's put request
+            ctx.getChannel().write(Header.ok(put));
+
+            handler.transferFuture().addListener(new FinishPut(put, sdfsPut));
         }
 
         public void visit(Header.Get get) throws IOException {
@@ -170,8 +171,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     stopwatch.stop();
                     if (future.isSuccess()) {
-                        System.out.printf("Sent `%s' (%d bytes) to `%s' in %s (%s).%n",
-                                put.filename, put.size, client.name,
+                        System.out.printf("Sent `%s' (%s) to `%s' in %s (%s).%n",
+                                put.filename, Output.transferSize(put.size), client.name,
                                 stopwatch.toString(), Output.transferRate(put.size, stopwatch));
                     } else {
                         System.out.printf("Failed to send `%s' to `%s'%n", put.filename, client.name);

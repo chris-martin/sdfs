@@ -1,7 +1,9 @@
 package sdfs.client;
 
+import com.google.common.base.Stopwatch;
 import org.jboss.netty.channel.*;
 import org.jboss.netty.handler.ssl.SslHandler;
+import org.jboss.netty.handler.stream.ChunkedStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sdfs.Output;
@@ -10,6 +12,7 @@ import sdfs.store.ByteStore;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ClientHandler extends SimpleChannelUpstreamHandler {
 
@@ -17,6 +20,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
 
     private final Protocol protocol = new Protocol();
     private final ByteStore store;
+
+    private final AtomicReference<OutboundFile> outboundFile = new AtomicReference<>();
 
     public ClientHandler(ByteStore store) {
         this.store = store;
@@ -73,16 +78,45 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
             log.info("Receiving file `{}' ({} bytes)", put.filename, put.size);
         }
 
+        public void visit(Header.Ok ok) throws IOException {
+            final OutboundFile file = outboundFile.get();
+            if (file == null) {
+                throw new ProtocolException("Server OK'd client put, but client didn't put");
+            }
+            log.debug("Server OK'd put of `{}'. Writing file contents...", file.put.filename);
+
+            final Stopwatch stopwatch = new Stopwatch().start();
+            ctx.getChannel().write(new ChunkedStream(file.file.openBufferedStream())).addListener(
+                    new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            stopwatch.stop();
+                            outboundFile.compareAndSet(file, null);
+                            Header.Put put = file.put;
+                            if (future.isSuccess()) {
+                                System.out.printf("Put `%s' (%s) in %s (%s).%n",
+                                        put.filename, Output.transferSize(put.size),
+                                        stopwatch.toString(), Output.transferRate(put.size, stopwatch));
+                            } else {
+                                System.out.printf("Failed to put `%s'.%n", put.filename);
+                            }
+                        }
+                    });
+        }
+
         public void visit(Header.Prohibited prohibited) {
+            outboundFile.set(null);
             System.out.println("`" + prohibited.filename + "' permission denied.");
         }
 
         public void visit(Header.Unavailable unavailable) {
+            outboundFile.set(null);
             System.out.println("`" + unavailable.filename + "' currently unavailable. Please try again.");
         }
 
         @Override
-        public void visit(Header.Nonexistent nonexistent) throws Exception {
+        public void visit(Header.Nonexistent nonexistent) {
+            outboundFile.set(null);
             System.out.println("`" + nonexistent.filename + "' does not exist.");
         }
 
@@ -93,6 +127,10 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         public void visit(Header.Delegate delegate) {
             throw new ProtocolException("Server cannot sent delegate header to client");
         }
+    }
+
+    boolean setOutboundFile(OutboundFile outboundFile) {
+        return this.outboundFile.compareAndSet(null, outboundFile);
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {

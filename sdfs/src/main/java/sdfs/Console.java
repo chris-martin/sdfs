@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.tools.jline.console.ConsoleReader;
 import scala.tools.jline.console.history.FileHistory;
+import sdfs.client.CannotPutException;
 import sdfs.client.Client;
 import sdfs.sdfs.AccessType;
 import sdfs.sdfs.DelegationType;
@@ -272,12 +273,16 @@ public class Console {
         } else if (client != null) {
             if (head.equals("get") && tail.size() == 1) {
                 String filename = tail.get(0);
-                System.out.println("Getting file " + filename);
+                System.out.printf("Getting file `%s'...%n", filename);
                 client.get(filename);
             } else if (head.equals("put") && tail.size() == 1) {
                 String filename = tail.get(0);
-                System.out.println("Putting file " + filename);
-                client.put(filename);
+                System.out.printf("Putting file `%s'...%n", filename);
+                try {
+                    client.put(filename);
+                } catch (CannotPutException e) {
+                    System.out.println(e.getMessage());
+                }
             } else if (head.startsWith("delegate") && tail.size() >= 3) {
                 final DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
 
