@@ -3,6 +3,7 @@ package sdfs.store;
 import com.google.common.io.ByteSink;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Files;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -87,7 +88,11 @@ public class FileStore implements ByteStore, StringStore, PathManipulator {
     }
 
     public void delete(Path path) throws IOException {
-        java.nio.file.Files.deleteIfExists(path(path));
+        if (path.toFile().isDirectory()) {
+            FileUtils.deleteDirectory(path(path).toFile());
+        } else {
+            java.nio.file.Files.deleteIfExists(path);
+        }
     }
 
     public boolean exists(Path path) {
