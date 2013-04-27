@@ -60,7 +60,8 @@ object Build extends sbt.Build {
       import de.johoop.findbugs4sbt.ReportType._
       FindBugs.findbugsSettings ++ Seq(
         findbugsReportType := Html,
-        findbugsReportName := "findbugs.html"
+        findbugsReportName := "findbugs.html",
+        test <<= (test in Test) dependsOn findbugs
       )
     } ++ {
       import sbtassembly.Plugin, Plugin._
