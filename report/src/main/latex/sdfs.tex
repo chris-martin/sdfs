@@ -226,17 +226,24 @@ bye
 
 \section{Performance}
 
+To test performance, we ran the server and client on two physically separate machines connected to the same gigabit switch. Our results were as indicated in the following table:
+
 \begin{tabular}{r|ll|ll}
         & Get time & Get speed & Put time & Put speed \\ \hline
- 100 kB & & & 38.68 ms &  2.585 MB/s \\
-   1 MB & & & 102.3 ms &  9.778 MB/s \\
-  10 MB & & & 526.7 ms & 18.986 MB/s \\
- 100 MB & & & 4.488 s  & 22.283 MB/s \\
-   1 GB & & & 48.67 s  & 20.546 MB/s \\
-  10 GB & & & 435.5 s  & 22.961 MB/s
+ 100 kB & 72.14 ms & 1.386 MB/s  & 38.68 ms &  2.585 MB/s \\
+   1 MB & 279.7 ms & 3.575 MB/s  & 102.3 ms &  9.778 MB/s \\
+  10 MB & 849.3 ms & 11.774 MB/s & 526.7 ms & 18.986 MB/s \\
+ 100 MB & 4.929 s  & 20.289 MB/s & 4.488 s  & 22.283 MB/s \\
+   1 GB & 50.21 s  & 19.918 MB/s & 48.67 s  & 20.546 MB/s \\
+  10 GB & 883.2 s  & 11.322 MB/s & 435.5 s  & 22.961 MB/s
 \end{tabular}\\[5pt]
 
-The average speed appears to level off above 10MB.
-Excluding smaller files, we conclude that our throughput is approximately 20 MB/s.
+Note that our implementation is capable of handling very large files. It accomplishes this without the need for much memory at all -- we run with the default JVM max memory settings -- by performing all file operations, including hashing and encryption/decryption, on streams rather than first loading entire files into memory.
+
+The average speed appears to level off above 10 MB.
+Excluding smaller files, we conclude that our put throughput is approximately 20 MB/s and our get throughput roughly 10-20 MB/s.
+
+Attaching a profiler to the VM during several test transfers revealed the bottleneck to be primarily encryption/decryption and to a lesser degree hashing of the file contents, rather than the network itself or disk I/O.
+
 
 \end{document}
