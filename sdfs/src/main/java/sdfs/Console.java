@@ -181,9 +181,9 @@ public class Console {
 
         if (ImmutableList.of("?").contains(head)) {
 
-            System.out.println(help());
             System.out.println(config());
             System.out.println(status());
+            System.out.println(help());
 
         } else if (ImmutableList.of("log").contains(head)) {
 
