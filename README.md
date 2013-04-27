@@ -44,7 +44,7 @@ identity. The pki directory comes with keystores for the following identities:
 To create another keystore for "client4" with a cert signed by our CA, run
 from the pki directory:
 
-    $ gen-cert.sh client4
+    $ ./gen-cert.sh client4
 
 To switch to another identity, such as "client2", type:
 
