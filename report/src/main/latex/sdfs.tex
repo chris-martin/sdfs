@@ -69,7 +69,8 @@ sas.txt
 \subsubsection{Put}
 
 \textit{Put} messages are sent by both clients and servers.
-When the server sends a \textit{put}, the file body immediately follows.
+When the server sends a \textit{put} (in response to a client \textit{get}),
+the file body immediately follows.
 When the client sends a \textit{put}, it waits to receive an \textit{ok}
 response before sending the file content.
 
@@ -97,12 +98,12 @@ sas.txt \\
 
 \subsubsection{Delegate}
 
-\textit{Delegate} messages are send by clients.
+\textit{Delegate} messages are sent by clients.
 
 \paragraph{Lines of the message header}
 \begin{enumerate}
 \item \texttt{delegate}
-\item A new \text{correlation ID}.
+\item A new \text{correlation ID}
 \item The name of the file
 \item The CN of the principal receiving delegated rights
 \item Some non-empty space-delimited combination of \texttt{get}, \texttt{get*}, \texttt{put}, \texttt{put*}
