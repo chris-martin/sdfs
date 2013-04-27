@@ -31,9 +31,17 @@ class Policy {
     }
 
     Policy delegate(CN from, CN to, Right right, Instant expiration, Instant now) {
-        if (!principalRights(from).mayGrant(right, now)) {
+
+        PrincipalRights fromRights = principalRights(from);
+        if (!fromRights.mayGrant(right, now)) {
             throw new AccessControlException();
         }
+
+        Instant fromExpiration = fromRights.getExpiration(right);
+        if (fromExpiration != null && fromExpiration.isBefore(expiration)) {
+            expiration = fromExpiration;
+        }
+
         return new Policy(
             x.withValue(
                 to.name,

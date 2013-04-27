@@ -3,7 +3,6 @@ package sdfs.sdfs;
 import org.joda.time.Instant;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import sdfs.CN;
 import sdfs.MockChronos;
 import sdfs.store.MockStore;
@@ -101,6 +100,25 @@ public class PolicyStoreImplTest {
 
         Assert.assertEquals(
             true,
+            policy.hasAccess(charlie, apple, AccessType.Get)
+        );
+
+    }}; }
+
+    @Test public void pingPongExpirationAttack() throws Exception { new Fixture() {{
+
+        policy.grantOwner(alice, apple);
+        policy.delegate(alice, bob, apple, Right.GetStar, new Instant(10));
+        chronos.now = new Instant(8);
+        policy.delegate(bob, charlie, apple, Right.GetStar, new Instant(15));
+        chronos.now = new Instant(12);
+
+        Assert.assertEquals(
+            false,
+            policy.hasAccess(bob, apple, AccessType.Get)
+        );
+        Assert.assertEquals(
+            false,
             policy.hasAccess(charlie, apple, AccessType.Get)
         );
 

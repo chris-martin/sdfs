@@ -1,5 +1,5 @@
 
-                              SDFS
+                       SDFS - Instructions
 ===================================================================
 
  Dependencies
@@ -12,6 +12,10 @@
 ------------------------
 
   The default `make` target compiles and runs the application.
+
+  When SBT compiles, it automatically runs JUnit tests, outputting passing
+  test cases in green. It also runs findbugs, which prints nothing because
+  there are no bugs.
 
  How to use
 ------------
