@@ -270,59 +270,66 @@ public class Console {
                     client = null;
                 }
             }
-        } else if (client != null) {
-            if (head.equals("get") && tail.size() == 1) {
-                String filename = tail.get(0);
-                System.out.printf("Getting file `%s'...%n", filename);
-                client.get(filename);
-            } else if (head.equals("put") && tail.size() == 1) {
-                String filename = tail.get(0);
-                try {
-                    client.put(filename);
-                } catch (CannotPutException e) {
-                    System.out.printf("Could not put file: %s%n", e.getMessage());
-                }
-                System.out.printf("Putting file `%s'...%n", filename);
-            } else if (head.startsWith("delegate") && tail.size() >= 3) {
-                final DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
-
-                String filename = tail.get(0);
-                CN delegateClient = new CN(tail.get(1));
-
-                Instant expiration = new Instant(
-                    new com.joestelmach.natty.Parser().parse(
-                        tail.get(2)
-                    ).get(0).getDates().get(0)
-                );
-
-                List<AccessType> accessTypes;
-                if (tail.size() < 4) {
-                    accessTypes = ImmutableList.copyOf(AccessType.values());
-                } else {
-                    accessTypes = Lists.newArrayList();
-                    if (tail.contains("get")) {
-                        accessTypes.add(AccessType.Get);
-                    }
-                    if (tail.contains("put")) {
-                        accessTypes.add(AccessType.Put);
-                    }
-                }
-                Iterable<Right> rights = FluentIterable
-                        .from(accessTypes)
-                        .transform(new Function<AccessType, Right>() {
-                            public Right apply(AccessType type) {
-                                return new Right(type, delegationType);
-                            }
-                        });
-
-                client.delegate(delegateClient, filename, rights, expiration);
-            } else {
-                System.out.println(help());
+        } else if (head.equals("get") && tail.size() == 1) {
+            if (!ensureClient()) return;
+            String filename = tail.get(0);
+            System.out.printf("Getting file `%s'...%n", filename);
+            client.get(filename);
+        } else if (head.equals("put") && tail.size() == 1) {
+            if (!ensureClient()) return;
+            String filename = tail.get(0);
+            try {
+                client.put(filename);
+            } catch (CannotPutException e) {
+                System.out.printf("Could not put file: %s%n", e.getMessage());
             }
+            System.out.printf("Putting file `%s'...%n", filename);
+        } else if (head.startsWith("delegate") && tail.size() >= 3) {
+            if (!ensureClient()) return;
+            final DelegationType delegationType = head.endsWith("*") ? DelegationType.Star : DelegationType.None;
+
+            String filename = tail.get(0);
+            CN delegateClient = new CN(tail.get(1));
+
+            Instant expiration = new Instant(
+                    new com.joestelmach.natty.Parser().parse(
+                            tail.get(2)
+                    ).get(0).getDates().get(0)
+            );
+
+            List<AccessType> accessTypes;
+            if (tail.size() < 4) {
+                accessTypes = ImmutableList.copyOf(AccessType.values());
+            } else {
+                accessTypes = Lists.newArrayList();
+                if (tail.contains("get")) {
+                    accessTypes.add(AccessType.Get);
+                }
+                if (tail.contains("put")) {
+                    accessTypes.add(AccessType.Put);
+                }
+            }
+            Iterable<Right> rights = FluentIterable
+                    .from(accessTypes)
+                    .transform(new Function<AccessType, Right>() {
+                        public Right apply(AccessType type) {
+                            return new Right(type, delegationType);
+                        }
+                    });
+
+            client.delegate(delegateClient, filename, rights, expiration);
         } else {
             System.out.println(help());
         }
 
+    }
+
+    private boolean ensureClient() {
+        if (client == null) {
+            System.out.println("Client not connected.");
+            return false;
+        }
+        return true;
     }
 
     public static void main(String[] args) {
