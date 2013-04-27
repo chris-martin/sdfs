@@ -24,7 +24,6 @@ import sdfs.store.ByteStore;
 import sdfs.store.FileStore;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
@@ -133,8 +132,8 @@ public class Client {
                     }
                 }
             });
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
     }
 
